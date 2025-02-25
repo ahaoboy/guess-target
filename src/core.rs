@@ -136,7 +136,6 @@ fn guess_git(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
             if let Some(version) = caps.name("git").map(|i| i.as_str()) {
                 let clean_re = build_re(&format!("{}[-_\\. ]?", version));
                 let cleaned = clean_re.replace(s, "");
-                println!("cleand {} {}", version, cleaned);
                 return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
             }
         }
@@ -306,8 +305,8 @@ pub fn get_local_target() -> Vec<Target> {
 
 #[cfg(test)]
 mod test {
-    use crate::{core::guess_git, guess_target};
     use super::{get_rules, guess_version};
+    use crate::{core::guess_git, guess_target};
 
     #[test]
     fn test_get_rules() {
@@ -325,18 +324,19 @@ mod test {
 
         for line in lines {
             println!("line {}", line);
-            let [filename, name, targets, version] = line[1..line.len() - 1]
+            let [filename, name, targets, version, git] = line[1..line.len() - 1]
                 .split("|")
                 .map(str::trim)
                 .collect::<Vec<_>>()
                 .try_into()
-                .unwrap_or(["", "", "", ""]);
+                .unwrap_or(["", "", "", "", ""]);
 
             let ret = guess_target(filename);
 
             for i in &ret {
                 assert_eq!(i.name, name);
                 assert_eq!(i.version.clone().unwrap_or("".to_string()), version);
+                assert_eq!(i.git.clone().unwrap_or("".to_string()), git);
             }
 
             let s = ret
