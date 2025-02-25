@@ -31,7 +31,7 @@
     "build:lib": "tsc && pnpm run copy:wasm",
     "test": "vitest",
     "test:run": "vitest --run",
-    "copy:wasm": "cp ./ts/wasm ./dist -r",
+    "copy:wasm": "cp -r ./ts/wasm ./dist",
     "build:cli": "esbuild ./ts/cli.ts --bundle --outdir=./dist --platform=node",
     "bundle": "esbuild --outdir=bundle --bundle --minify --platform=node --format=cjs ts/cli.ts",
     "format": "deno fmt --ignore=node_modules,dist,bundle,target --indent-width=2 --no-semicolons",
