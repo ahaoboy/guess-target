@@ -1,0 +1,24 @@
+[package]
+name = "guess-target"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "guess-target"
+repository = "https://github.com/ahaoboy/guess-target"
+homepage = "https://github.com/ahaoboy/guess-target"
+authors = ["ahaoboy"]
+include = ["/src", "/Cargo.toml", "/README.md"]
+
+[dependencies]
+regex = "^1"
+wasm-bindgen = { version = "0.2", optional = true }
+is-musl = { version = "0.1"  }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[[bin]]
+name = "guess-target"

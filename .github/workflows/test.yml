@@ -1,0 +1,52 @@
+name: Test
+
+permissions:
+  contents: write
+
+on: [push]
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -CeEuo pipefail {0}
+
+jobs:
+  rust-test:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-14, macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - name: cargo test
+        run: |
+          cargo test
+      - name: run
+        run: |
+          cargo -q run deno-x86_64-pc-windows-msvc
+  js-test:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-14, macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: build
+        run: |
+          pnpm install
+          pnpm run build
+      - name: test
+        run: |
+          pnpm run test:run
+      - name: run
+        run: |
+          node dist/cli.js deno-x86_64-pc-windows-msvc

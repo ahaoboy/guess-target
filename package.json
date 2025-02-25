@@ -1,0 +1,57 @@
+{
+  "name": "guess-target",
+  "version": "0.1.3",
+  "description": "guess-target",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "bin": {
+    "guess-target": "bundle/cli.js"
+  },
+  "files": [
+    "dist",
+    "bundle",
+    "readme.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahaoboy/guess-target.git"
+  },
+  "homepage": "https://github.com/ahaoboy/guess-target#readme",
+  "keywords": [
+    "guess-target"
+  ],
+  "author": "ahaoboy",
+  "license": "ISC",
+  "scripts": {
+    "build": "pnpm run build:lib && pnpm run build:cli",
+    "build:inline": " wasm-pack-inline ./web -d ./ts/wasm --name index",
+    "build:full": "pnpm run build:wasm && pnpm run build:inline && pnpm run build:lib && pnpm run build:cli && pnpm run copy:wasm",
+    "build:wasm": "wasm-pack build --target=web --out-dir ./web --release -- --features=wasm",
+    "dev": "tsc -w -p tsconfig.build.json",
+    "build:lib": "tsc && pnpm run copy:wasm",
+    "test": "vitest",
+    "test:run": "vitest --run",
+    "copy:wasm": "cp ./ts/wasm ./dist -r",
+    "build:cli": "esbuild ./ts/cli.ts --bundle --outdir=./dist --platform=node",
+    "bundle": "esbuild --outdir=bundle --bundle --minify --platform=node --format=cjs ts/cli.ts",
+    "format": "deno fmt --ignore=node_modules,dist,bundle,target --indent-width=2 --no-semicolons",
+    "pre-check": "npm run clippy && npm run format",
+    "clippy": "cargo clippy --fix --allow-dirty --allow-staged",
+    "clear": "rm -rf node_modules dist bundle",
+    "bump": "pnpm up --latest --force"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "is-musl": "0.1.0",
+    "vitest": "3.0.5",
+    "change-case": "^5.4.4",
+    "wasm-pack-inline": "0.1.3",
+    "@types/node": "^22.10.7",
+    "esbuild": "0.25.0",
+    "typescript": "^5.7.3"
+  },
+  "pnpm": {
+    "neverBuiltDependencies": []
+  }
+}
