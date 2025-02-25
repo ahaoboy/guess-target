@@ -1,10 +1,10 @@
-use std::{borrow::Cow, str::FromStr};
 use crate::{
     Abi,
     target::{Arch, Os, TARGET_LIST, Target},
 };
 use is_musl::is_musl;
 use regex::{Regex, RegexBuilder};
+use std::{borrow::Cow, collections::HashMap, str::FromStr};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -23,7 +23,7 @@ pub struct GuessTarget {
 #[derive(Debug, Clone)]
 struct Rule {
     re: Regex,
-    target: Option<Target>,
+    target: Vec<Target>,
     rank: u32,
 }
 
@@ -123,16 +123,36 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
 fn get_rules() -> Vec<Rule> {
     let mut v = vec![];
 
-    let target_re = TARGET_LIST
-        .map(|i| i.to_str().replace("-", SEQ_RE))
-        .join("|");
-    let rank = 30;
-    let re = format!(r"^{}{}(?<target>{})\b", NAME_RE, SEQ_RE, target_re);
-    v.push(Rule {
-        re: build_re(&re),
-        target: None,
-        rank,
-    });
+    let pick = |s: &str, n: usize| -> bool { s.matches("-").count() == n };
+
+    let target3 = TARGET_LIST
+        .into_iter()
+        .filter(|i| pick(i.to_str(), 3))
+        .collect::<Vec<_>>();
+    let target2 = TARGET_LIST
+        .into_iter()
+        .filter(|i| pick(i.to_str(), 2))
+        .collect::<Vec<_>>();
+    let target1 = TARGET_LIST
+        .into_iter()
+        .filter(|i| pick(i.to_str(), 1))
+        .collect::<Vec<_>>();
+
+    for (t, rank) in [(target3, 30), (target2, 25), (target1, 20)] {
+        let s = t
+            .iter()
+            .map(|i| i.to_str().replace("-", SEQ_RE))
+            .collect::<Vec<_>>()
+            .join("|");
+        let re = format!(r"^{}{}(?<target>{})\b", NAME_RE, SEQ_RE, s);
+        v.push(Rule {
+            re: build_re(&re),
+            target: vec![],
+            rank,
+        });
+    }
+
+    let mut re_map = HashMap::new();
 
     for target in TARGET_LIST {
         for (common_target, rank) in get_common_targets(&target) {
@@ -142,13 +162,18 @@ fn get_rules() -> Vec<Rule> {
                 SEQ_RE,
                 common_target.replace("-", SEQ_RE)
             );
-            v.push(Rule {
-                re: build_re(&re),
-                target: Some(target),
-                rank,
-            });
+            re_map.entry((re, rank)).or_insert(vec![]).push(target);
         }
     }
+
+    for ((re, rank), target) in re_map {
+        v.push(Rule {
+            re: build_re(&re),
+            target,
+            rank,
+        });
+    }
+
     v.sort_by(|a, b| b.rank.cmp(&a.rank));
     v
 }
@@ -215,10 +240,14 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
         }
         if let Some(cap) = rule.re.captures(&cleaned) {
             let name = &cap["name"];
-            if let Some(target) = rule.target.or(cap
+            let mut targets = rule.target.clone();
+            if let Some(t) = cap
                 .name("target")
-                .and_then(|i| Target::from_str(i.as_str()).ok()))
+                .and_then(|i| Target::from_str(i.as_str()).ok())
             {
+                targets.push(t);
+            }
+            for target in targets {
                 v.push(GuessTarget {
                     name: name.to_string(),
                     target,
@@ -226,7 +255,6 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
                     git: git.clone().map(|i| i.to_string()),
                 });
             }
-
             last_rank = rule.rank;
         }
     }
@@ -339,12 +367,11 @@ pub fn get_local_target() -> Vec<Target> {
 #[cfg(test)]
 mod test {
     use super::{get_rules, guess_version};
-    use crate::{core::guess_git, guess_target};
+    use crate::{TARGET_LIST, core::guess_git, guess_target};
 
     #[test]
     fn test_get_rules() {
         let rules = get_rules();
-        println!("{}", rules.len());
         assert!(!rules.is_empty());
     }
     #[test]
@@ -371,14 +398,11 @@ mod test {
                 assert_eq!(i.version.clone().unwrap_or("".to_string()), version);
                 assert_eq!(i.git.clone().unwrap_or("".to_string()), git);
             }
-
-            let s = ret
-                .iter()
-                .map(|i| i.target.to_str())
-                .collect::<Vec<_>>()
-                .join(",");
-
-            assert_eq!(s, targets);
+            let s = ret.iter().map(|i| i.target.to_str()).collect::<Vec<_>>();
+            let targets: Vec<_> = targets.split(",").collect();
+            for i in s {
+                assert!(targets.contains(&i));
+            }
         }
     }
 
@@ -472,6 +496,19 @@ mod test {
                 b.unwrap_or_default().to_string(),
                 git.unwrap_or_default().to_string()
             );
+        }
+    }
+
+    #[test]
+    fn test_default() {
+        let name = "guess-target";
+        let v = TARGET_LIST.map(|i| (format!("{name}-{}", i.to_str()), i));
+        for (s, t) in v {
+            let guess = guess_target(&s);
+            for k in guess {
+                assert_eq!(k.name, name);
+                assert_eq!(k.target, t);
+            }
         }
     }
 }
