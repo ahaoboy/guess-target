@@ -41,11 +41,12 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
     let abi = target.abi();
 
     let mut os_list = match os {
-        Os::Linux => vec!["linux"],
+        Os::Linux => vec!["linux", "linuxstatic"],
         Os::Darwin => vec!["darwin", "macos", "mac", "mac64"],
         Os::Windows => vec!["windows", "win32", "win"],
         Os::Freebsd => vec!["freebsd"],
         Os::Netbsd => vec!["netbsd"],
+        Os::Android => vec!["android"],
         _ => vec![],
     };
     let mut arch_list = match arch {
@@ -71,11 +72,36 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
         os_list.push("lin64");
     }
 
-    if os == Os::Windows && arch == Arch::X86_64 {
-        os_list.push("win64");
-        arch_list.push("x86-64-v3");
-        v.push(("x86-64-v3".to_string(), 5));
-        v.push(("portable".to_string(), 5));
+    if os == Os::Windows {
+        if arch == Arch::X86_64 || arch == Arch::Aarch64 {
+            os_list.push("win64");
+        }
+        v.push(("portable".to_string(), 1));
+        if arch == Arch::X86_64 {
+            arch_list.push("x86-64-v3");
+            v.push(("x86-64-v3".to_string(), 5));
+            v.push((
+                format!(
+                    "(light)?{}?portable{}({})",
+                    SEQ_RE,
+                    SEQ_RE,
+                    arch_list.join("|")
+                ),
+                5,
+            ));
+        }
+
+        if arch == Arch::Aarch64 {
+            v.push((
+                format!(
+                    "(light)?{}?portable{}({})",
+                    SEQ_RE,
+                    SEQ_RE,
+                    arch_list.join("|")
+                ),
+                5,
+            ));
+        }
     }
 
     if os_list.is_empty() || arch_list.is_empty() {
@@ -101,7 +127,7 @@ fn get_rules() -> Vec<Rule> {
         let s = target.to_str().replace("-", SEQ_RE);
         let rank = 30;
         // name-target
-        let re = format!(r"{}{}{}\b", NAME_RE, SEQ_RE, s);
+        let re = format!(r"^{}{}{}\b", NAME_RE, SEQ_RE, s);
         v.push(Rule {
             re: build_re(&re),
             target,
@@ -110,7 +136,7 @@ fn get_rules() -> Vec<Rule> {
 
         for (common_target, rank) in get_common_targets(&target) {
             let re = format!(
-                r"{}{}{}\b",
+                r"^{}{}{}\b",
                 NAME_RE,
                 SEQ_RE,
                 common_target.replace("-", SEQ_RE)
@@ -182,6 +208,7 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
     let (version, cleaned) = guess_version(s);
     let (git, cleaned) = guess_git(&cleaned);
 
+    println!("cleaned {cleaned}");
     for rule in &rules {
         if last_rank > rule.rank {
             return v;
@@ -353,6 +380,11 @@ mod test {
     fn test_guess_version() {
         for (a, b, c) in [
             (
+                "ScreenToGif.2.41.1.Light.Portable.x64",
+                Some("2.41.1"),
+                "ScreenToGif.Light.Portable.x64",
+            ),
+            (
                 "ryujinx-1.2.82-macos_universal",
                 Some("1.2.82"),
                 "ryujinx-macos_universal",
@@ -407,6 +439,11 @@ mod test {
     #[test]
     fn test_guess_git() {
         for (a, b, c) in [
+            (
+                "ScreenToGif.2.41.1.Light.Portable.x64",
+                None,
+                "ScreenToGif.2.41.1.Light.Portable.x64",
+            ),
             (
                 "ryujinx-1.2.82-macos_universal",
                 None,
