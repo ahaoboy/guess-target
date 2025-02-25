@@ -1,10 +1,10 @@
 /* tslint:disable */
 /* eslint-disable */
-export function guessTarget(s: string): GuessTarget[]
-export function targetToString(target: Target): string
-export function targetGetOs(target: Target): Os
-export function targetGetArch(target: Target): Arch
-export function targetGetAbi(target: Target): Abi | undefined
+export function guessTarget(s: string): GuessTarget[];
+export function targetToString(target: Target): string;
+export function targetGetOs(target: Target): Os;
+export function targetGetArch(target: Target): Arch;
+export function targetGetAbi(target: Target): Abi | undefined;
 export enum Abi {
   Gnu = 0,
   Msvc = 1,
@@ -68,9 +68,11 @@ export enum Vendor {
   Pc = 2,
 }
 export class GuessTarget {
-  private constructor()
-  free(): void
-  target: Target
-  readonly name: string
-  readonly version: string | undefined
+  private constructor();
+  free(): void;
+  target: Target;
+  readonly name: string;
+  readonly version: string | undefined;
+  readonly git: string | undefined;
 }
+
