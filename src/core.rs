@@ -1,5 +1,4 @@
 use std::{borrow::Cow, str::FromStr};
-
 use crate::{
     Abi,
     target::{Arch, Os, TARGET_LIST, Target},
@@ -24,7 +23,7 @@ pub struct GuessTarget {
 #[derive(Debug, Clone)]
 struct Rule {
     re: Regex,
-    target: Target,
+    target: Option<Target>,
     rank: u32,
 }
 
@@ -123,17 +122,19 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
 
 fn get_rules() -> Vec<Rule> {
     let mut v = vec![];
-    for target in TARGET_LIST {
-        let s = target.to_str().replace("-", SEQ_RE);
-        let rank = 30;
-        // name-target
-        let re = format!(r"^{}{}{}\b", NAME_RE, SEQ_RE, s);
-        v.push(Rule {
-            re: build_re(&re),
-            target,
-            rank,
-        });
 
+    let target_re = TARGET_LIST
+        .map(|i| i.to_str().replace("-", SEQ_RE))
+        .join("|");
+    let rank = 30;
+    let re = format!(r"^{}{}(?<target>{})\b", NAME_RE, SEQ_RE, target_re);
+    v.push(Rule {
+        re: build_re(&re),
+        target: None,
+        rank,
+    });
+
+    for target in TARGET_LIST {
         for (common_target, rank) in get_common_targets(&target) {
             let re = format!(
                 r"^{}{}{}\b",
@@ -143,7 +144,7 @@ fn get_rules() -> Vec<Rule> {
             );
             v.push(Rule {
                 re: build_re(&re),
-                target,
+                target: Some(target),
                 rank,
             });
         }
@@ -208,19 +209,24 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
     let (version, cleaned) = guess_version(s);
     let (git, cleaned) = guess_git(&cleaned);
 
-    println!("cleaned {cleaned}");
     for rule in &rules {
         if last_rank > rule.rank {
             return v;
         }
         if let Some(cap) = rule.re.captures(&cleaned) {
             let name = &cap["name"];
-            v.push(GuessTarget {
-                name: name.to_string(),
-                target: rule.target,
-                version: version.clone().map(|i| i.to_string()),
-                git: git.clone().map(|i| i.to_string()),
-            });
+            if let Some(target) = rule.target.or(cap
+                .name("target")
+                .and_then(|i| Target::from_str(i.as_str()).ok()))
+            {
+                v.push(GuessTarget {
+                    name: name.to_string(),
+                    target,
+                    version: version.clone().map(|i| i.to_string()),
+                    git: git.clone().map(|i| i.to_string()),
+                });
+            }
+
             last_rank = rule.rank;
         }
     }
