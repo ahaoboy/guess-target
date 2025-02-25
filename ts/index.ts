@@ -3,7 +3,6 @@ import {
   targetGetAbi,
   targetGetArch,
   targetGetOs,
-  targetToString,
 } from "./wasm"
 import { Target } from "./wasm"
 import { Abi } from "./wasm"
@@ -12,9 +11,6 @@ import { isMusl } from "is-musl"
 
 export * from "./wasm"
 
-const OsMap: Record<string, string> = {}
-const ArchMap: Record<string, string> = {}
-const AbiMap: Record<string, string> = {}
 
 // * * `'aix'`
 // * * `'darwin'`
@@ -79,6 +75,10 @@ export function getLocalAbi(): Abi[] {
   }
   if (process.platform === "win32") {
     return [Abi.Msvc, Abi.Gnu]
+  }
+
+  if (process.platform === 'linux') {
+    return [Abi.Gnu]
   }
   return []
 }

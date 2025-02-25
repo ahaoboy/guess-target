@@ -235,6 +235,10 @@ pub fn get_local_abi() -> Vec<Abi> {
     if cfg!(windows) {
         return vec![Abi::Msvc, Abi::Gnu];
     }
+
+    if cfg!(target_os = "linux") {
+        return vec![Abi::Gnu];
+    }
     vec![]
 }
 
