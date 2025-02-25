@@ -1,6 +1,6 @@
 {
   "name": "guess-target",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "guess-target",
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
