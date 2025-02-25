@@ -56,7 +56,7 @@ x86_64-pc-windows-msvc
 x86_64-unknown-linux-gnu
 ```
 
-### Tier 2
+### Tier 2 with Host Tools
 
 ```
 aarch64-pc-windows-msvc
@@ -78,3 +78,32 @@ x86_64-unknown-illumos
 x86_64-unknown-linux-musl
 x86_64-unknown-netbsd
 ```
+
+### Tier 2 without Host Tools
+
+aarch64-apple-ios aarch64-apple-ios-macabi aarch64-apple-ios-sim
+aarch64-linux-android aarch64-pc-windows-gnullvm aarch64-unknown-fuchsia
+aarch64-unknown-linux-ohos aarch64-unknown-none aarch64-unknown-none-softfloat
+aarch64-unknown-uefi arm-linux-androideabi arm-unknown-linux-musleabi
+arm-unknown-linux-musleabihf arm64ec-pc-windows-msvc armebv7r-none-eabi
+armebv7r-none-eabihf armv5te-unknown-linux-gnueabi
+armv5te-unknown-linux-musleabi armv7-linux-androideabi
+armv7-unknown-linux-gnueabi armv7-unknown-linux-musleabi
+armv7-unknown-linux-musleabihf armv7-unknown-linux-ohos armv7a-none-eabi
+armv7r-none-eabi armv7r-none-eabihf i586-pc-windows-msvc i586-unknown-linux-gnu
+i586-unknown-linux-musl i686-linux-android i686-pc-windows-gnullvm
+i686-unknown-freebsd i686-unknown-linux-musl i686-unknown-uefi
+loongarch64-unknown-none loongarch64-unknown-none-softfloat nvptx64-nvidia-cuda
+riscv32i-unknown-none-elf riscv32im-unknown-none-elf
+riscv32imac-unknown-none-elf riscv32imafc-unknown-none-elf
+riscv32imc-unknown-none-elf riscv64gc-unknown-none-elf
+riscv64imac-unknown-none-elf sparc64-unknown-linux-gnu sparcv9-sun-solaris
+thumbv6m-none-eabi thumbv7em-none-eabi thumbv7em-none-eabihf thumbv7m-none-eabi
+thumbv7neon-linux-androideabi thumbv7neon-unknown-linux-gnueabihf
+thumbv8m.base-none-eabi thumbv8m.main-none-eabi thumbv8m.main-none-eabihf
+wasm32-unknown-emscripten wasm32-unknown-unknown wasm32-wasip1
+wasm32-wasip1-threads wasm32-wasip2 wasm32v1-none x86_64-apple-ios
+x86_64-apple-ios-macabi x86_64-fortanix-unknown-sgx x86_64-linux-android
+x86_64-pc-solaris x86_64-pc-windows-gnullvm x86_64-unknown-fuchsia
+x86_64-unknown-linux-gnux32 x86_64-unknown-linux-ohos x86_64-unknown-none
+x86_64-unknown-redox x86_64-unknown-uefi

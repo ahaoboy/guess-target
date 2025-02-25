@@ -68,7 +68,7 @@ for (const i of s.split("\n")) {
   const parts = v.split("-")
   arch.push(parts[0])
   vendor.push(parts[1])
-  os.push(parts[2])
+  os.push(parts[2] ?? parts[1])
   abi.push(parts[3])
 }
 
@@ -110,7 +110,9 @@ function implForTarget(targets: string[]): string {
     `pub fn os(&self)-> Os {
       match self {`,
     targets.map((i) =>
-      `Target::${pascalCase(i)} => Os::${pascalCase(i.split("-")[2])}`
+      `Target::${pascalCase(i)} => Os::${
+        pascalCase(i.split("-")[2] ?? i.split("-")[1])
+      }`
     ).join(",\n"),
     "}}",
     // abi
@@ -141,7 +143,7 @@ function getRule(targets: string[]): string {
         "( Target::" + pascalCase(i),
         "Arch::" + pascalCase(arch),
         "Vendor::" + pascalCase(vendor),
-        "Os::" + pascalCase(os),
+        "Os::" + pascalCase(os ?? vendor),
         (abi ? "Some(Abi::" + pascalCase(abi) + ")" : "None") + ")",
       ]
     }).join(",\n"),
