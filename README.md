@@ -39,6 +39,7 @@ name: ryujinx target: x86_64-apple-darwin version: 1.2.82
 | ScreenToGif.2.41.1.Portable.x64          | ScreenToGif | x86_64-pc-windows-gnu,x86_64-pc-windows-msvc,x86_64-pc-windows-gnullvm                                                                                                                                                                  | 2.41.1    |             |
 | ScreenToGif.2.41.1.Portable.Arm64        | ScreenToGif | aarch64-pc-windows-msvc,aarch64-pc-windows-gnullvm                                                                                                                                                                                      | 2.41.1    |             |
 | alist-android-amd64                      | alist       | x86_64-linux-android                                                                                                                                                                                                                    |           |             |
+| biome-win32-x64.exe                      | biome       | x86_64-pc-windows-gnu,x86_64-pc-windows-msvc,x86_64-pc-windows-gnullvm                                                                                                                                                                  |           |             |
 
 ## Platform Support
 
