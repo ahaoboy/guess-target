@@ -1,7 +1,7 @@
 import { getLocalTarget, guessTarget, targetToString } from "./index"
 
 console.log(
-  "local target: ",
+  "local target:",
   getLocalTarget().map((i) => targetToString(i)).join(","),
 )
 

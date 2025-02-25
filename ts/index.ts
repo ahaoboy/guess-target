@@ -3,6 +3,7 @@ import {
   targetGetAbi,
   targetGetArch,
   targetGetOs,
+  targetToString,
 } from "./wasm"
 import { Target } from "./wasm"
 import { Abi } from "./wasm"
@@ -10,7 +11,6 @@ import { Os } from "./wasm"
 import { isMusl } from "is-musl"
 
 export * from "./wasm"
-
 
 // * * `'aix'`
 // * * `'darwin'`
@@ -77,7 +77,7 @@ export function getLocalAbi(): Abi[] {
     return [Abi.Msvc, Abi.Gnu]
   }
 
-  if (process.platform === 'linux') {
+  if (process.platform === "linux") {
     return [Abi.Gnu]
   }
   return []
@@ -88,7 +88,11 @@ export function getLocalTarget(): Target[] {
   const arch = getLocalArch()
   const abi = getLocalAbi()
   const v: Target[] = []
-  for (const target of Object.values(Target) as Target[]) {
+  for (
+    const target of Object.keys(Target).filter((i) =>
+      !isNaN(+i)
+    ) as unknown as Target[]
+  ) {
     const targetOs = targetGetOs(target)
     const targetArch = targetGetArch(target)
     const targetAbi = targetGetAbi(target)
