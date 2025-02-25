@@ -5,7 +5,7 @@
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
   "bin": {
-    "guess-target": "bundle/cli.js"
+    "guess-target": "dist/cli.js"
   },
   "files": [
     "dist",
