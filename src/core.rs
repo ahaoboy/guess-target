@@ -1,10 +1,11 @@
 use crate::{
     Abi,
-    target::{Arch, Os, TARGET_LIST, Target},
+    target::{Arch, Os, Target},
 };
 use is_musl::is_musl;
 use regex::{Regex, RegexBuilder};
 use std::{borrow::Cow, collections::HashMap, str::FromStr};
+use strum::IntoEnumIterator;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -49,16 +50,19 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
         _ => vec![],
     };
     let mut arch_list = match arch {
-        Arch::X86_64 => vec!["x86_64", "amd64", "x64", "x86", "386", "i686", "legacy"],
+        Arch::X86_64 => vec!["x86_64", "amd64", "x64", "x86", "i686", "legacy"],
         Arch::I686 => vec!["386", "i686", "x86"],
         Arch::Aarch64 => vec!["aarch64", "arm64", "armv7"],
         Arch::Arm => vec!["arm"],
         Arch::S390x => vec!["s390x"],
         Arch::Powerpc => vec!["powerpc"],
-        Arch::Powerpc64 => vec!["powerpc64"],
+        Arch::Powerpc64 => vec!["powerpc64", "ppc64"],
+        Arch::Powerpc64le => vec!["ppc64le"],
         Arch::Riscv64gc => vec!["riscv64"],
+        Arch::Armv7 => vec!["armv7"],
         _ => vec![],
     };
+
     let mut v = vec![];
 
     if os == Os::Darwin && arch == Arch::Aarch64 {
@@ -125,16 +129,13 @@ fn get_rules() -> Vec<Rule> {
 
     let pick = |s: &str, n: usize| -> bool { s.matches("-").count() == n };
 
-    let target3 = TARGET_LIST
-        .into_iter()
+    let target3 = Target::iter()
         .filter(|i| pick(i.to_str(), 3))
         .collect::<Vec<_>>();
-    let target2 = TARGET_LIST
-        .into_iter()
+    let target2 = Target::iter()
         .filter(|i| pick(i.to_str(), 2))
         .collect::<Vec<_>>();
-    let target1 = TARGET_LIST
-        .into_iter()
+    let target1 = Target::iter()
         .filter(|i| pick(i.to_str(), 1))
         .collect::<Vec<_>>();
 
@@ -154,7 +155,7 @@ fn get_rules() -> Vec<Rule> {
 
     let mut re_map = HashMap::new();
 
-    for target in TARGET_LIST {
+    for target in Target::iter() {
         for (common_target, rank) in get_common_targets(&target) {
             let re = format!(
                 r"^{}{}{}\b",
@@ -174,7 +175,10 @@ fn get_rules() -> Vec<Rule> {
         });
     }
 
-    v.sort_by(|a, b| b.rank.cmp(&a.rank));
+    v.sort_by(|a, b| match b.rank.cmp(&a.rank) {
+        std::cmp::Ordering::Equal => b.re.as_str().len().cmp(&a.re.as_str().len()),
+        cmp => cmp,
+    });
     v
 }
 
@@ -349,7 +353,7 @@ pub fn get_local_target() -> Vec<Target> {
     let os = get_local_os();
     let arch = get_loacal_arch();
     let abi = get_local_abi();
-    for i in TARGET_LIST {
+    for i in Target::iter() {
         let target_abi = i.abi();
         let fit_abi = match target_abi {
             Some(a) => abi.contains(&a),
@@ -367,7 +371,8 @@ pub fn get_local_target() -> Vec<Target> {
 #[cfg(test)]
 mod test {
     use super::{get_rules, guess_version};
-    use crate::{TARGET_LIST, core::guess_git, guess_target};
+    use crate::{Target, core::guess_git, guess_target};
+    use strum::IntoEnumIterator;
 
     #[test]
     fn test_get_rules() {
@@ -502,8 +507,7 @@ mod test {
     #[test]
     fn test_default() {
         let name = "guess-target";
-        let v = TARGET_LIST.map(|i| (format!("{name}-{}", i.to_str()), i));
-        for (s, t) in v {
+        for (s, t) in Target::iter().map(|t| (format!("{name}-{t}",), t)) {
             let guess = guess_target(&s);
             for k in guess {
                 assert_eq!(k.name, name);

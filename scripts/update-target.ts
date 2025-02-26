@@ -42,13 +42,12 @@ function toEnum(name: string, v: string[]): string {
     }
     }
 }`,
+    // `pub const ${
+    //   constantCase(enumName + "List")
+    // } : [${enumName}; ${v.length}] = [`,
+    // v.map((i) => `${enumName}::${pascalCase(i)}`).join(",\n"),
 
-    `pub const ${
-      constantCase(enumName + "List")
-    } : [${enumName}; ${v.length}] = [`,
-    v.map((i) => `${enumName}::${pascalCase(i)}`).join(",\n"),
-
-    "];",
+    // "];",
   ]
 
   return codes.join("\n")
