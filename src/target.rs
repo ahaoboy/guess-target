@@ -1,5 +1,7 @@
+use strum_macros::EnumIter;
+
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(EnumIter, Debug, PartialEq, Clone, Copy)]
 pub enum Os {
     Darwin,
     Linux,
@@ -112,7 +114,7 @@ pub const OS_LIST: [Os; 22] = [
     Os::Redox,
 ];
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(EnumIter, Debug, PartialEq, Clone, Copy)]
 pub enum Arch {
     Aarch64,
     I686,
@@ -273,7 +275,7 @@ pub const ARCH_LIST: [Arch; 34] = [
     Arch::Wasm32v1,
 ];
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(EnumIter, Debug, PartialEq, Clone, Copy)]
 pub enum Vendor {
     Apple,
     Unknown,
@@ -338,7 +340,7 @@ pub const VENDOR_LIST: [Vendor; 10] = [
     Vendor::Fortanix,
 ];
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(EnumIter, Debug, PartialEq, Clone, Copy)]
 pub enum Abi {
     Gnu,
     Msvc,
@@ -423,7 +425,7 @@ pub const ABI_LIST: [Abi; 15] = [
     Abi::Gnux32,
 ];
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(EnumIter, Debug, PartialEq, Clone, Copy)]
 pub enum Target {
     Aarch64AppleDarwin,
     Aarch64UnknownLinuxGnu,

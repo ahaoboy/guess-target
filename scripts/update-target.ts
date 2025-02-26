@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "fs"
 import { constantCase, pascalCase } from "change-case"
 
-const Derive = `#[derive(Debug, PartialEq, Clone, Copy)]`
+const Derive = `#[derive(EnumIter, Debug, PartialEq, Clone, Copy)]`
 const WasmDerive =
   `#[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]`
 
@@ -72,7 +72,11 @@ for (const i of s.split("\n")) {
   abi.push(parts[3])
 }
 
-const codes: string[] = []
+const codes: string[] = [
+  `use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
+`,
+]
 for (
   const [name, value] of Object.entries({
     os,

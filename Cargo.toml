@@ -13,6 +13,8 @@ include = ["/src", "/Cargo.toml", "/README.md"]
 regex = "^1"
 wasm-bindgen = { version = "0.2", optional = true }
 is-musl = { version = "0.1"  }
+strum = "0.27"
+strum_macros = "0.27"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
