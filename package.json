@@ -36,7 +36,7 @@
     "bundle": "esbuild --outdir=bundle --bundle --minify --platform=node --format=cjs ts/cli.ts",
     "format": "deno fmt --ignore=ts/wasm --indent-width=2 --no-semicolons",
     "pre-check": "npm run clippy && npm run format",
-    "clippy": "cargo clippy --fix --allow-dirty --allow-staged",
+    "clippy": " cargo fmt && cargo clippy --fix --allow-dirty --allow-staged",
     "clear": "rm -rf node_modules dist bundle",
     "bump": "pnpm up --latest --force"
   },

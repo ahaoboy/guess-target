@@ -158,5 +158,5 @@ function getRule(targets: string[]): string {
 }
 
 codes.push(implForTarget(target))
-codes.push(getRule(target))
+// codes.push(getRule(target))
 writeFileSync("src/target.rs", codes.join("\n"))

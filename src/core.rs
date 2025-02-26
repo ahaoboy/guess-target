@@ -15,6 +15,7 @@ pub struct GuessTarget {
     #[cfg_attr(feature = "wasm", wasm_bindgen(skip))]
     pub name: String,
     pub target: Target,
+    pub rank: u32,
     #[cfg_attr(feature = "wasm", wasm_bindgen(skip))]
     pub version: Option<String>,
     #[cfg_attr(feature = "wasm", wasm_bindgen(skip))]
@@ -257,6 +258,7 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
                     target,
                     version: version.clone().map(|i| i.to_string()),
                     git: git.clone().map(|i| i.to_string()),
+                    rank: rule.rank,
                 });
             }
             last_rank = rule.rank;
