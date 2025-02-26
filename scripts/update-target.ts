@@ -73,7 +73,7 @@ for (const i of s.split("\n")) {
 }
 
 const codes: string[] = [
-  `use strum::IntoEnumIterator;
+  `pub use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 `,
 ]

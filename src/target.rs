@@ -1,3 +1,4 @@
+pub use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
