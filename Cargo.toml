@@ -10,7 +10,7 @@ authors = ["ahaoboy"]
 include = ["/src", "/Cargo.toml", "/README.md"]
 
 [dependencies]
-regex = "^1"
+regex = "1"
 wasm-bindgen = { version = "0.2", optional = true }
 is-musl = { version = "0.1"  }
 strum = "0.27"

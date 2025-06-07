@@ -42,6 +42,7 @@ name: ryujinx target: x86_64-apple-darwin version: 1.2.82
 | biome-win32-x64                          | biome       | x86_64-pc-windows-gnu,x86_64-pc-windows-msvc,x86_64-pc-windows-gnullvm                                                                                                                                                                  |           |             |
 | node-v23.7.0-darwin-x64                  | node        | x86_64-apple-darwin                                                                                                                                                                                                                     | v23.7.0   |             |
 | alist-linux-386                          | alist       | i686-unknown-linux-gnu,i686-unknown-linux-musl                                                                                                                                                                                          |           |             |
+| zig-x86_64-linux-0.14.1                         | zig       | x86_64-unknown-linux-gnu,x86_64-unknown-linux-musl,x86_64-unknown-linux-gnux32,x86_64-unknown-linux-ohos                                                                                                                                                                                          |      0.14.1      |             |
 
 ## Platform Support
 

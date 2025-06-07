@@ -116,10 +116,12 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
 
     if let Some(abi) = abi {
         v.push((format!("{}-{}-{}", os_re, arch_re, abi), 10));
+        v.push((format!("{}-{}-{}", arch_re, os_re, abi), 10));
         v.push((format!("{}-{}-{}", os_re, abi, arch_re,), 10));
     }
 
     v.push((format!("{}-{}", os_re, arch_re), 5));
+    v.push((format!("{}-{}", arch_re, os_re), 5));
     v.push((os_re, 2));
     v.push((arch_re, 1));
     v
