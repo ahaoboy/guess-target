@@ -200,6 +200,7 @@ export class GuessTarget {
   private constructor();
   free(): void;
   target: Target;
+  rank: number;
   readonly name: string;
   readonly version: string | undefined;
   readonly git: string | undefined;
