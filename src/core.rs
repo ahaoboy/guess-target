@@ -198,12 +198,12 @@ fn guess_git(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
     {
         let re = GIT_RE;
         let re = build_re(re);
-        if let Some(caps) = re.captures(s) {
-            if let Some(version) = caps.name("git").map(|i| i.as_str()) {
-                let clean_re = build_re(&format!("{}[-_\\. ]?", version));
-                let cleaned = clean_re.replace(s, "");
-                return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
-            }
+        if let Some(caps) = re.captures(s)
+            && let Some(version) = caps.name("git").map(|i| i.as_str())
+        {
+            let clean_re = build_re(&format!("{}[-_\\. ]?", version));
+            let cleaned = clean_re.replace(s, "");
+            return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
         }
     }
     (None, std::borrow::Cow::Borrowed(s))
@@ -221,19 +221,19 @@ fn guess_version(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
         r#"(?P<version>[a-zA-Z]?\d{1,4}[\._-]\d{1,4})"#,
     ] {
         let re = build_re(re);
-        if let Some(caps) = re.captures(s) {
-            if let Some(version) = caps.name("version").map(|i| i.as_str()) {
-                // skip arch
-                if ["x86_64"].contains(&version) {
-                    continue;
-                }
-                let clean_re = build_re(&format!(
-                    "{}[-_\\. ]?(latest|alpha|beta|master)?[-_\\. ]?",
-                    version
-                ));
-                let cleaned = clean_re.replace(s, "");
-                return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
+        if let Some(caps) = re.captures(s)
+            && let Some(version) = caps.name("version").map(|i| i.as_str())
+        {
+            // skip arch
+            if ["x86_64"].contains(&version) {
+                continue;
             }
+            let clean_re = build_re(&format!(
+                "{}[-_\\. ]?(latest|alpha|beta|master)?[-_\\. ]?",
+                version
+            ));
+            let cleaned = clean_re.replace(s, "");
+            return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
         }
     }
     (None, std::borrow::Cow::Borrowed(s))
