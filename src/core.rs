@@ -115,10 +115,17 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
     let arch_re = format!("({})", arch_list.join("|"));
 
     if let Some(abi) = abi {
+        v.push((format!("{}-{}-{}$", os_re, arch_re, abi), 15));
+        v.push((format!("{}-{}-{}$", arch_re, os_re, abi), 15));
+        v.push((format!("{}-{}-{}$", os_re, abi, arch_re,), 15));
+
         v.push((format!("{}-{}-{}", os_re, arch_re, abi), 10));
         v.push((format!("{}-{}-{}", arch_re, os_re, abi), 10));
         v.push((format!("{}-{}-{}", os_re, abi, arch_re,), 10));
     }
+
+    v.push((format!("{}-{}$", os_re, arch_re), 7));
+    v.push((format!("{}-{}$", arch_re, os_re), 7));
 
     v.push((format!("{}-{}", os_re, arch_re), 5));
     v.push((format!("{}-{}", arch_re, os_re), 5));
