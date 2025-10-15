@@ -12,7 +12,7 @@ include = ["/src", "/Cargo.toml", "/README.md"]
 [dependencies]
 regex = "1"
 wasm-bindgen = { version = "0.2", optional = true }
-is-musl = { version = "0.1"  }
+is-musl = { version = "0.1", git = "https://github.com/ahaoboy/is-musl" }
 strum = "0.27"
 strum_macros = "0.27"
 
