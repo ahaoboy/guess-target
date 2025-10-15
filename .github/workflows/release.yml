@@ -120,3 +120,11 @@ jobs:
         with:
           name: guess-target-${{ steps.artifact-target.outputs.artifact-target }}
           path: guess-target-${{ steps.artifact-target.outputs.artifact-target }}.*
+      - name: release nightly
+        uses: ncipollo/release-action@v1
+        with:
+          # tag: ${{ steps.build.outputs.tag }}
+          tag: nightly
+          artifacts: "guess-target-${{ steps.artifact-target.outputs.artifact-target }}.*"
+          allowUpdates: true
+          makeLatest: false
