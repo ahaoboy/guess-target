@@ -1,6 +1,8 @@
 pub use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
+use crate::get_local_target;
+
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(EnumIter, Debug, PartialEq, Hash, Eq, Clone, Copy)]
 pub enum Os {
@@ -1075,5 +1077,13 @@ impl Target {
             Target::X86_64UnknownRedox => None,
             Target::X86_64UnknownUefi => None,
         }
+    }
+}
+
+impl Default for Target {
+    fn default() -> Self {
+        *get_local_target()
+            .first()
+            .expect("Failed to detect local target")
     }
 }
