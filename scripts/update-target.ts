@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "fs"
 import { constantCase, pascalCase } from "change-case"
 
-const Derive = `#[derive(EnumIter, Debug, PartialEq, Clone, Copy)]`
+const Derive = `#[derive(EnumIter, Debug, PartialEq, Hash,Eq, Clone, Copy)]`
 const WasmDerive =
   `#[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]`
 
