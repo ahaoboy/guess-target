@@ -350,7 +350,10 @@ pub fn get_local_abi() -> Vec<Abi> {
     };
 
     if cfg!(windows) {
-        return vec![Abi::Msvc, Abi::Gnu];
+        if std::env::var("MSYSTEM").is_ok() {
+            return vec![Abi::Msvc, Abi::Gnu];
+        }
+        return vec![Abi::Msvc];
     }
 
     if cfg!(target_os = "linux") {
