@@ -1,9 +1,9 @@
+use crate::get_local_target;
 pub use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::get_local_target;
-
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(EnumIter, Debug, PartialEq, Hash, Eq, Clone, Copy)]
 pub enum Os {
     Darwin,
@@ -93,6 +93,7 @@ impl std::str::FromStr for Os {
     }
 }
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(EnumIter, Debug, PartialEq, Hash, Eq, Clone, Copy)]
 pub enum Arch {
     Aarch64,
@@ -218,6 +219,7 @@ impl std::str::FromStr for Arch {
     }
 }
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(EnumIter, Debug, PartialEq, Hash, Eq, Clone, Copy)]
 pub enum Vendor {
     Apple,
@@ -271,6 +273,7 @@ impl std::str::FromStr for Vendor {
     }
 }
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(EnumIter, Debug, PartialEq, Hash, Eq, Clone, Copy)]
 pub enum Abi {
     Gnu,
@@ -339,6 +342,7 @@ impl std::str::FromStr for Abi {
     }
 }
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(EnumIter, Debug, PartialEq, Hash, Eq, Clone, Copy)]
 pub enum Target {
     Aarch64AppleDarwin,

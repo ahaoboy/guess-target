@@ -10,6 +10,7 @@ use strum::IntoEnumIterator;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Debug, PartialEq, Hash, Eq, Clone)]
 pub struct GuessTarget {
     #[cfg_attr(feature = "wasm", wasm_bindgen(skip))]
