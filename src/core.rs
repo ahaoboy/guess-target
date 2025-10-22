@@ -4,7 +4,7 @@ use crate::{
 };
 use is_musl::is_musl;
 use regex::{Regex, RegexBuilder};
-use std::{borrow::Cow, collections::HashMap, str::FromStr};
+use std::{borrow::Cow, collections::HashMap, process::Command, str::FromStr};
 use strum::IntoEnumIterator;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -345,13 +345,29 @@ pub fn get_loacal_arch() -> Arch {
     }
 }
 
+fn is_msys() -> bool {
+    if std::env::var("MSYSTEM").is_ok() {
+        return true;
+    }
+
+    if let Ok(output) = Command::new("uname").arg("-o").output()
+        && let Ok(s) = String::from_utf8(output.stdout) {
+            let s = s.to_lowercase();
+            if s.contains("msys") || s.contains("mingw") {
+                return true;
+            }
+        }
+
+    false
+}
+
 pub fn get_local_abi() -> Vec<Abi> {
     if is_musl() {
         return vec![Abi::Musl];
     };
 
     if cfg!(windows) {
-        if std::env::var("MSYSTEM").is_ok() {
+        if is_msys() {
             return vec![Abi::Msvc, Abi::Gnu];
         }
         return vec![Abi::Msvc];
