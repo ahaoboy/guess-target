@@ -59,9 +59,7 @@ static VERSION_REGEXES: Lazy<Vec<Regex>> = Lazy::new(|| {
 });
 
 // Cached regex pattern for git hash detection
-static GIT_REGEX: Lazy<Regex> = Lazy::new(|| {
-    build_re(r"(?P<git>git[-_ ][0-9a-fA-F-]{7,})\b")
-});
+static GIT_REGEX: Lazy<Regex> = Lazy::new(|| build_re(r"(?P<git>git[-_ ][0-9a-fA-F-]{7,})\b"));
 
 pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
     let os = target.os();
@@ -162,14 +160,15 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
 }
 
 // Cached rules - built once and reused
-static RULES: Lazy<Vec<Rule>> = Lazy::new(|| build_rules());
+static RULES: Lazy<Vec<Rule>> = Lazy::new(build_rules);
 
 fn build_rules() -> Vec<Rule> {
-    let mut v = Vec::with_capacity(200);
+    let mut v = Vec::with_capacity(400);
 
     // Optimize: single iteration to categorize targets by dash count
-    let (target3, target2, target1): (Vec<_>, Vec<_>, Vec<_>) =
-        Target::iter().fold((vec![], vec![], vec![]), |(mut t3, mut t2, mut t1), target| {
+    let (target3, target2, target1): (Vec<_>, Vec<_>, Vec<_>) = Target::iter().fold(
+        (vec![], vec![], vec![]),
+        |(mut t3, mut t2, mut t1), target| {
             match target.to_str().matches('-').count() {
                 3 => t3.push(target),
                 2 => t2.push(target),
@@ -177,7 +176,8 @@ fn build_rules() -> Vec<Rule> {
                 _ => {}
             }
             (t3, t2, t1)
-        });
+        },
+    );
 
     for (t, rank) in [(target3, 30), (target2, 25), (target1, 20)] {
         let s = t
@@ -193,7 +193,7 @@ fn build_rules() -> Vec<Rule> {
         });
     }
 
-    let mut re_map = HashMap::with_capacity(500);
+    let mut re_map = HashMap::with_capacity(400);
 
     for target in Target::iter() {
         for (common_target, rank) in get_common_targets(&target) {
@@ -223,31 +223,31 @@ fn build_rules() -> Vec<Rule> {
 }
 
 fn guess_git(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
-    if let Some(caps) = GIT_REGEX.captures(s) {
-        if let Some(version) = caps.name("git").map(|i| i.as_str()) {
-            let clean_re = build_re(&format!("{}[-_\\. ]?", version));
-            let cleaned = clean_re.replace(s, "");
-            return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
-        }
+    if let Some(caps) = GIT_REGEX.captures(s)
+        && let Some(version) = caps.name("git").map(|i| i.as_str())
+    {
+        let clean_re = build_re(&format!("{}[-_\\. ]?", version));
+        let cleaned = clean_re.replace(s, "");
+        return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
     }
     (None, std::borrow::Cow::Borrowed(s))
 }
 
 fn guess_version(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
     for re in VERSION_REGEXES.iter() {
-        if let Some(caps) = re.captures(s) {
-            if let Some(version) = caps.name("version").map(|i| i.as_str()) {
-                // skip arch
-                if ["x86_64"].contains(&version) {
-                    continue;
-                }
-                let clean_re = build_re(&format!(
-                    "{}[-_\\. ]?(latest|alpha|beta|master)?[-_\\. ]?",
-                    version
-                ));
-                let cleaned = clean_re.replace(s, "");
-                return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
+        if let Some(caps) = re.captures(s)
+            && let Some(version) = caps.name("version").map(|i| i.as_str())
+        {
+            // skip arch
+            if ["x86_64"].contains(&version) {
+                continue;
             }
+            let clean_re = build_re(&format!(
+                "{}[-_\\. ]?(latest|alpha|beta|master)?[-_\\. ]?",
+                version
+            ));
+            let cleaned = clean_re.replace(s, "");
+            return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
         }
     }
     (None, std::borrow::Cow::Borrowed(s))
@@ -274,9 +274,7 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
 
         if let Some(cap) = rule.re.captures(&cleaned) {
             // Safe capture group access with default value
-            let name = cap.name("name")
-                .map(|m| m.as_str())
-                .unwrap_or("");
+            let name = cap.name("name").map(|m| m.as_str()).unwrap_or("");
 
             let mut targets = rule.target.clone();
             if let Some(t) = cap
