@@ -3,6 +3,7 @@ use crate::{
     target::{Arch, Os, Target},
 };
 use is_musl::is_musl;
+use once_cell::sync::Lazy;
 use regex::{Regex, RegexBuilder};
 use std::{borrow::Cow, collections::HashMap, process::Command, str::FromStr};
 use strum::IntoEnumIterator;
@@ -37,10 +38,37 @@ fn build_re(s: &str) -> Regex {
     RegexBuilder::new(s).case_insensitive(true).build().unwrap()
 }
 
+// Cached regex patterns for version detection
+static VERSION_REGEXES: Lazy<Vec<Regex>> = Lazy::new(|| {
+    vec![
+        // nightly-2024-01-01
+        build_re(r"(?P<version>nightly-\d{4}-\d{2}-\d{2})"),
+        // 1.2.3-rc1, 1.2.3-rc2
+        build_re(r"(?P<version>v?\d+\.\d+\.\d+-rc\d+)"),
+        // 1.2.3-alpha, 1.2.3-beta
+        build_re(r"(?P<version>v?\d+\.\d+\.\d+-(alpha|beta))"),
+        // 20250225
+        build_re(r"(?P<version>[a-zA-Z]?\d{7,})"),
+        // 1.2.3.4
+        build_re(r"(?P<version>[a-zA-Z]?\d{1,4}(?:[\._-]\d{1,4}){3})"),
+        // 1.2.3
+        build_re(r"(?P<version>[a-zA-Z]?\d{1,4}(?:[\._-]\d{1,4}){2})"),
+        // 1.2
+        build_re(r"(?P<version>[a-zA-Z]?\d{1,4}[\._-]\d{1,4})"),
+    ]
+});
+
+// Cached regex pattern for git hash detection
+static GIT_REGEX: Lazy<Regex> = Lazy::new(|| {
+    build_re(r"(?P<git>git[-_ ][0-9a-fA-F-]{7,})\b")
+});
+
 pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
     let os = target.os();
     let arch = target.arch();
     let abi = target.abi();
+
+    let mut v = Vec::with_capacity(20);
 
     let mut os_list = match os {
         Os::Linux => vec!["linux", "linuxstatic"],
@@ -52,20 +80,18 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
         _ => vec![],
     };
     let mut arch_list = match arch {
-        Arch::X86_64 => vec!["x86_64", "amd64", "x64", "x86", "i686", "legacy"],
-        Arch::I686 => vec!["386", "i686", "x86"],
-        Arch::Aarch64 => vec!["aarch64", "arm64", "armv7"],
-        Arch::Arm => vec!["arm"],
+        Arch::X86_64 => vec!["x86_64", "amd64", "x64", "x86", "i686", "legacy", "ia64"],
+        Arch::I686 => vec!["386", "i686", "x86", "ia32", "i386"],
+        Arch::Aarch64 => vec!["aarch64", "arm64", "armv8", "armv7"],
+        Arch::Arm => vec!["arm", "armv6"],
         Arch::S390x => vec!["s390x"],
-        Arch::Powerpc => vec!["powerpc"],
+        Arch::Powerpc => vec!["powerpc", "ppc"],
         Arch::Powerpc64 => vec!["powerpc64", "ppc64"],
-        Arch::Powerpc64le => vec!["ppc64le"],
-        Arch::Riscv64gc => vec!["riscv64"],
-        Arch::Armv7 => vec!["armv7"],
+        Arch::Powerpc64le => vec!["ppc64le", "powerpc64le"],
+        Arch::Riscv64gc => vec!["riscv64", "riscv"],
+        Arch::Armv7 => vec!["armv7", "armv7l"],
         _ => vec![],
     };
-
-    let mut v = vec![];
 
     if os == Os::Darwin && arch == Arch::Aarch64 {
         os_list.push("mac64arm");
@@ -135,20 +161,23 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
     v
 }
 
-fn get_rules() -> Vec<Rule> {
-    let mut v = vec![];
+// Cached rules - built once and reused
+static RULES: Lazy<Vec<Rule>> = Lazy::new(|| build_rules());
 
-    let pick = |s: &str, n: usize| -> bool { s.matches("-").count() == n };
+fn build_rules() -> Vec<Rule> {
+    let mut v = Vec::with_capacity(200);
 
-    let target3 = Target::iter()
-        .filter(|i| pick(i.to_str(), 3))
-        .collect::<Vec<_>>();
-    let target2 = Target::iter()
-        .filter(|i| pick(i.to_str(), 2))
-        .collect::<Vec<_>>();
-    let target1 = Target::iter()
-        .filter(|i| pick(i.to_str(), 1))
-        .collect::<Vec<_>>();
+    // Optimize: single iteration to categorize targets by dash count
+    let (target3, target2, target1): (Vec<_>, Vec<_>, Vec<_>) =
+        Target::iter().fold((vec![], vec![], vec![]), |(mut t3, mut t2, mut t1), target| {
+            match target.to_str().matches('-').count() {
+                3 => t3.push(target),
+                2 => t2.push(target),
+                1 => t1.push(target),
+                _ => {}
+            }
+            (t3, t2, t1)
+        });
 
     for (t, rank) in [(target3, 30), (target2, 25), (target1, 20)] {
         let s = t
@@ -164,7 +193,7 @@ fn get_rules() -> Vec<Rule> {
         });
     }
 
-    let mut re_map = HashMap::new();
+    let mut re_map = HashMap::with_capacity(500);
 
     for target in Target::iter() {
         for (common_target, rank) in get_common_targets(&target) {
@@ -193,15 +222,9 @@ fn get_rules() -> Vec<Rule> {
     v
 }
 
-const GIT_RE: &str = r"(?P<git>git[-_ ][0-9a-fA-F-]{7,})\b";
-
 fn guess_git(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
-    {
-        let re = GIT_RE;
-        let re = build_re(re);
-        if let Some(caps) = re.captures(s)
-            && let Some(version) = caps.name("git").map(|i| i.as_str())
-        {
+    if let Some(caps) = GIT_REGEX.captures(s) {
+        if let Some(version) = caps.name("git").map(|i| i.as_str()) {
             let clean_re = build_re(&format!("{}[-_\\. ]?", version));
             let cleaned = clean_re.replace(s, "");
             return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
@@ -211,30 +234,20 @@ fn guess_git(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
 }
 
 fn guess_version(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
-    for re in [
-        // 20250225
-        r#"(?P<version>[a-zA-Z]?\d{7,})"#,
-        // 1.2.3.4
-        r#"(?P<version>[a-zA-Z]?\d{1,4}(?:[\._-]\d{1,4}){3})"#,
-        // 1.2.3
-        r#"(?P<version>[a-zA-Z]?\d{1,4}(?:[\._-]\d{1,4}){2})"#,
-        // 1.2
-        r#"(?P<version>[a-zA-Z]?\d{1,4}[\._-]\d{1,4})"#,
-    ] {
-        let re = build_re(re);
-        if let Some(caps) = re.captures(s)
-            && let Some(version) = caps.name("version").map(|i| i.as_str())
-        {
-            // skip arch
-            if ["x86_64"].contains(&version) {
-                continue;
+    for re in VERSION_REGEXES.iter() {
+        if let Some(caps) = re.captures(s) {
+            if let Some(version) = caps.name("version").map(|i| i.as_str()) {
+                // skip arch
+                if ["x86_64"].contains(&version) {
+                    continue;
+                }
+                let clean_re = build_re(&format!(
+                    "{}[-_\\. ]?(latest|alpha|beta|master)?[-_\\. ]?",
+                    version
+                ));
+                let cleaned = clean_re.replace(s, "");
+                return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
             }
-            let clean_re = build_re(&format!(
-                "{}[-_\\. ]?(latest|alpha|beta|master)?[-_\\. ]?",
-                version
-            ));
-            let cleaned = clean_re.replace(s, "");
-            return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
         }
     }
     (None, std::borrow::Cow::Borrowed(s))
@@ -242,19 +255,29 @@ fn guess_version(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
 
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen(js_name = guessTarget))]
 pub fn guess_target(s: &str) -> Vec<GuessTarget> {
-    let rules = get_rules();
-    let mut v = vec![];
-    let mut last_rank = 0;
+    let rules = &*RULES; // Use cached rules
+    let mut v = Vec::with_capacity(10);
+    let mut last_rank: u32 = 0;
 
     let (version, cleaned) = guess_version(s);
     let (git, cleaned) = guess_git(&cleaned);
 
-    for rule in &rules {
+    for rule in rules {
+        // Early exit: if we have results and current rule priority is significantly lower
+        if !v.is_empty() && last_rank > 0 && rule.rank + 5 < last_rank {
+            break;
+        }
+
         if last_rank > rule.rank {
             return v;
         }
+
         if let Some(cap) = rule.re.captures(&cleaned) {
-            let name = &cap["name"];
+            // Safe capture group access with default value
+            let name = cap.name("name")
+                .map(|m| m.as_str())
+                .unwrap_or("");
+
             let mut targets = rule.target.clone();
             if let Some(t) = cap
                 .name("target")
@@ -314,7 +337,7 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
 pub fn get_local_os() -> Os {
     match std::env::consts::OS {
         "macos" => Os::Darwin,
-        s => Os::from_str(s).expect("failed to get_local_os"),
+        s => Os::from_str(s).unwrap_or(Os::Unknown),
     }
 }
 
@@ -341,7 +364,7 @@ pub fn get_loacal_arch() -> Arch {
     match std::env::consts::ARCH {
         "x86" => Arch::I686,
         "riscv64" => Arch::Riscv64gc,
-        s => Arch::from_str(s).expect("failed to get_loacal_arch"),
+        s => Arch::from_str(s).unwrap_or(Arch::X86_64), // Default to x86_64 as most common
     }
 }
 
@@ -350,15 +373,16 @@ fn is_msys() -> bool {
         return true;
     }
 
-    if let Ok(output) = Command::new("uname").arg("-o").output()
-        && let Ok(s) = String::from_utf8(output.stdout) {
+    Command::new("uname")
+        .arg("-o")
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|s| {
             let s = s.to_lowercase();
-            if s.contains("msys") || s.contains("mingw") {
-                return true;
-            }
-        }
-
-    false
+            s.contains("msys") || s.contains("mingw")
+        })
+        .unwrap_or(false)
 }
 
 pub fn get_local_abi() -> Vec<Abi> {
@@ -401,13 +425,13 @@ pub fn get_local_target() -> Vec<Target> {
 
 #[cfg(test)]
 mod test {
-    use super::{get_rules, guess_version};
+    use super::{build_rules, guess_version};
     use crate::{Target, core::guess_git, guess_target};
     use strum::IntoEnumIterator;
 
     #[test]
     fn test_get_rules() {
-        let rules = get_rules();
+        let rules = build_rules();
         assert!(!rules.is_empty());
     }
     #[test]
