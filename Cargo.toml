@@ -10,7 +10,10 @@ authors = ["ahaoboy"]
 include = ["/src", "/Cargo.toml", "/README.md"]
 
 [dependencies]
-regex = "1"
+regex = { version = "1", default-features = false, features = [
+  "unicode-case",
+  "unicode-perl",
+] }
 wasm-bindgen = { version = "0.2", optional = true }
 is-musl = { version = "0.1", git = "https://github.com/ahaoboy/is-musl" }
 strum = "0.27"
@@ -27,3 +30,16 @@ serde = ["dep:serde"]
 
 [[bin]]
 name = "guess-target"
+
+[profile.release]
+debug = false
+lto = true
+strip = true
+opt-level = 3
+codegen-units = 1
+
+[profile.bloaty]
+debug = true
+lto = false
+strip = false
+inherits = 'release'
