@@ -91,14 +91,19 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
         _ => vec![],
     };
 
+    if os == Os::Darwin && arch == Arch::X86_64 {
+        os_list.push("osx-13");
+    }
     if os == Os::Darwin && arch == Arch::Aarch64 {
         os_list.push("mac64arm");
+        os_list.push("osx-14");
     }
     if os == Os::Darwin {
         arch_list.push("universal");
     }
     if os == Os::Linux && arch == Arch::Aarch64 {
         os_list.push("lin64");
+        os_list.push("arm64v8");
     }
 
     if os == Os::Windows {
