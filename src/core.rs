@@ -33,6 +33,7 @@ struct Rule {
 
 const SEQ_RE: &str = r"[_ -\.]";
 const NAME_RE: &str = r"(?P<name>[^/.]+)";
+const EARLY_EXIT_GAP: u32 = 5;
 
 fn build_re(s: &str) -> Regex {
     RegexBuilder::new(s).case_insensitive(true).build().unwrap()
@@ -60,6 +61,44 @@ static VERSION_REGEXES: Lazy<Vec<Regex>> = Lazy::new(|| {
 
 // Cached regex pattern for git hash detection
 static GIT_REGEX: Lazy<Regex> = Lazy::new(|| build_re(r"(?P<git>git[-_ ][0-9a-fA-F-]{7,})\b"));
+
+const SUFFIXES: [&str; 4] = ["latest", "alpha", "beta", "master"];
+
+#[inline]
+fn next_sep_len(s: &str) -> usize {
+    match s.as_bytes().first() {
+        Some(b) if matches!(*b, b'-' | b'_' | b'.' | b' ') => 1,
+        _ => 0,
+    }
+}
+
+/// Remove the first occurrence of `token` from `s`, along with an optional
+/// trailing separator, an optional `(latest|alpha|beta|master)` suffix and
+/// another separator. Replaces the previous per-call `build_re(format!(...))`
+/// regex compilation — same behavior, zero regex compile cost.
+fn strip_token<'a>(s: &'a str, token: &str, with_suffix: bool) -> Cow<'a, str> {
+    let Some(start) = s.find(token) else {
+        return Cow::Borrowed(s);
+    };
+    let mut end = start + token.len();
+    end += next_sep_len(&s[end..]);
+    if with_suffix {
+        let rest = &s[end..];
+        for suffix in SUFFIXES {
+            if rest.len() >= suffix.len()
+                && rest[..suffix.len()].eq_ignore_ascii_case(suffix)
+            {
+                end += suffix.len();
+                end += next_sep_len(&s[end..]);
+                break;
+            }
+        }
+    }
+    let mut out = String::with_capacity(s.len() - (end - start));
+    out.push_str(&s[..start]);
+    out.push_str(&s[end..]);
+    Cow::Owned(out)
+}
 
 pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
     let os = target.os();
@@ -229,11 +268,10 @@ fn build_rules() -> Vec<Rule> {
 
 fn guess_git(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
     if let Some(caps) = GIT_REGEX.captures(s)
-        && let Some(version) = caps.name("git").map(|i| i.as_str())
+        && let Some(git) = caps.name("git").map(|i| i.as_str())
     {
-        let clean_re = build_re(&format!("{}[-_\\. ]?", version));
-        let cleaned = clean_re.replace(s, "");
-        return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
+        let cleaned = strip_token(s, git, false);
+        return (Some(std::borrow::Cow::Borrowed(git)), cleaned);
     }
     (None, std::borrow::Cow::Borrowed(s))
 }
@@ -244,14 +282,10 @@ fn guess_version(s: &str) -> (Option<Cow<'_, str>>, Cow<'_, str>) {
             && let Some(version) = caps.name("version").map(|i| i.as_str())
         {
             // skip arch
-            if ["x86_64"].contains(&version) {
+            if version == "x86_64" {
                 continue;
             }
-            let clean_re = build_re(&format!(
-                "{}[-_\\. ]?(latest|alpha|beta|master)?[-_\\. ]?",
-                version
-            ));
-            let cleaned = clean_re.replace(s, "");
+            let cleaned = strip_token(s, version, true);
             return (Some(std::borrow::Cow::Borrowed(version)), cleaned);
         }
     }
@@ -267,9 +301,13 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
     let (version, cleaned) = guess_version(s);
     let (git, cleaned) = guess_git(&cleaned);
 
+    // Pre-compute once instead of converting Cow -> String per result.
+    let version_str: Option<String> = version.as_ref().map(|i| i.to_string());
+    let git_str: Option<String> = git.as_ref().map(|i| i.to_string());
+
     for rule in rules {
         // Early exit: if we have results and current rule priority is significantly lower
-        if !v.is_empty() && last_rank > 0 && rule.rank + 5 < last_rank {
+        if !v.is_empty() && last_rank > 0 && rule.rank + EARLY_EXIT_GAP < last_rank {
             break;
         }
 
@@ -292,8 +330,8 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
                 v.push(GuessTarget {
                     name: name.to_string(),
                     target,
-                    version: version.clone().map(|i| i.to_string()),
-                    git: git.clone().map(|i| i.to_string()),
+                    version: version_str.clone(),
+                    git: git_str.clone(),
                     rank: rule.rank,
                 });
             }
@@ -337,10 +375,39 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
 /// * `"vita"`
 /// * `"vxworks"`
 /// * `"xous"`
-pub fn get_local_os() -> Os {
-    match std::env::consts::OS {
-        "macos" => Os::Darwin,
-        s => Os::from_str(s).unwrap_or(Os::Unknown),
+pub const fn get_local_os() -> Os {
+    if cfg!(target_os = "macos") {
+        Os::Darwin
+    } else if cfg!(target_os = "linux") {
+        Os::Linux
+    } else if cfg!(target_os = "windows") {
+        Os::Windows
+    } else if cfg!(target_os = "freebsd") {
+        Os::Freebsd
+    } else if cfg!(target_os = "netbsd") {
+        Os::Netbsd
+    } else if cfg!(target_os = "illumos") {
+        Os::Illumos
+    } else if cfg!(target_os = "ios") {
+        Os::Ios
+    } else if cfg!(target_os = "android") {
+        Os::Android
+    } else if cfg!(target_os = "fuchsia") {
+        Os::Fuchsia
+    } else if cfg!(target_os = "redox") {
+        Os::Redox
+    } else if cfg!(target_os = "solaris") {
+        Os::Solaris
+    } else if cfg!(target_os = "emscripten") {
+        Os::Emscripten
+    } else if cfg!(target_os = "wasi") {
+        Os::Wasip1
+    } else if cfg!(target_os = "none") {
+        Os::None
+    } else if cfg!(target_os = "uefi") {
+        Os::Uefi
+    } else {
+        Os::Unknown
     }
 }
 
@@ -363,19 +430,52 @@ pub fn get_local_os() -> Os {
 /// * `"sparc64"`
 /// * `"hexagon"`
 /// * `"loongarch64"`
-pub fn get_loacal_arch() -> Arch {
-    match std::env::consts::ARCH {
-        "x86" => Arch::I686,
-        "riscv64" => Arch::Riscv64gc,
-        s => Arch::from_str(s).unwrap_or(Arch::X86_64), // Default to x86_64 as most common
+pub const fn get_local_arch() -> Arch {
+    if cfg!(target_arch = "x86") {
+        Arch::I686
+    } else if cfg!(target_arch = "riscv64") {
+        Arch::Riscv64gc
+    } else if cfg!(target_arch = "aarch64") {
+        Arch::Aarch64
+    } else if cfg!(target_arch = "x86_64") {
+        Arch::X86_64
+    } else if cfg!(target_arch = "arm") {
+        Arch::Arm
+    } else if cfg!(target_arch = "loongarch64") {
+        Arch::Loongarch64
+    } else if cfg!(target_arch = "powerpc") {
+        Arch::Powerpc
+    } else if cfg!(target_arch = "powerpc64") {
+        if cfg!(target_endian = "little") {
+            Arch::Powerpc64le
+        } else {
+            Arch::Powerpc64
+        }
+    } else if cfg!(target_arch = "s390x") {
+        Arch::S390x
+    } else if cfg!(target_arch = "wasm32") {
+        Arch::Wasm32
+    } else {
+        Arch::X86_64
     }
 }
 
-fn is_msys() -> bool {
+/// Deprecated alias for [`get_local_arch`] (typo fix, kept for compatibility).
+#[deprecated(note = "renamed to `get_local_arch`")]
+pub fn get_loacal_arch() -> Arch {
+    get_local_arch()
+}
+
+static IS_MSYS: Lazy<bool> = Lazy::new(detect_msys);
+
+fn detect_msys() -> bool {
     if std::env::var("MSYSTEM").is_ok() {
         return true;
     }
-
+    // `uname` only exists in MSYS/Cygwin/Unix; short-circuit elsewhere.
+    if !cfg!(target_os = "windows") {
+        return false;
+    }
     Command::new("uname")
         .arg("-o")
         .output()
@@ -386,6 +486,10 @@ fn is_msys() -> bool {
             s.contains("msys") || s.contains("mingw")
         })
         .unwrap_or(false)
+}
+
+fn is_msys() -> bool {
+    *IS_MSYS
 }
 
 pub fn get_local_abi() -> Vec<Abi> {
@@ -406,24 +510,80 @@ pub fn get_local_abi() -> Vec<Abi> {
     vec![]
 }
 
-pub fn get_local_target() -> Vec<Target> {
-    let mut v = vec![];
+/// The exact target triple the current binary was compiled for, resolved at
+/// compile time from `cfg!(target_arch/target_os/target_env)` and cached in a
+/// `Lazy` slice — zero allocation after the first call.
+///
+/// This is *not* a guess: it reflects the toolchain that produced this binary.
+/// For runtime probing of the host (e.g. detecting musl/msys from a
+/// cross-compiled binary), use [`guess_local_target`].
+pub fn get_local_target() -> &'static [Target] {
+    &LOCAL_TARGET
+}
+
+static LOCAL_TARGET: Lazy<Vec<Target>> = Lazy::new(|| {
+    let arch = get_local_arch();
     let os = get_local_os();
-    let arch = get_loacal_arch();
+    // The `target_env` values below cover both common (gnu/musl/msvc/...) and
+    // rare cross-compile targets (gnueabi/gnullvm/softfloat/...). The latter
+    // are only recognized when actually compiling for those targets, so we
+    // silence the `unexpected_cfgs` lint that fires on an unrelated host.
+    #[allow(unexpected_cfgs)]
+    let abi = if cfg!(target_env = "musl") {
+        Some(Abi::Musl)
+    } else if cfg!(target_env = "gnu") {
+        Some(Abi::Gnu)
+    } else if cfg!(target_env = "msvc") {
+        Some(Abi::Msvc)
+    } else if cfg!(target_env = "gnueabi") {
+        Some(Abi::Gnueabi)
+    } else if cfg!(target_env = "gnueabihf") {
+        Some(Abi::Gnueabihf)
+    } else if cfg!(target_env = "musleabi") {
+        Some(Abi::Musleabi)
+    } else if cfg!(target_env = "musleabihf") {
+        Some(Abi::Musleabihf)
+    } else if cfg!(target_env = "gnullvm") {
+        Some(Abi::Gnullvm)
+    } else if cfg!(target_env = "ohos") {
+        Some(Abi::Ohos)
+    } else if cfg!(target_env = "sgx") {
+        Some(Abi::Sgx)
+    } else if cfg!(target_env = "gnux32") {
+        Some(Abi::Gnux32)
+    } else if cfg!(target_env = "softfloat") {
+        Some(Abi::Softfloat)
+    } else if cfg!(target_env = "elf") {
+        Some(Abi::Elf)
+    } else if cfg!(target_env = "macabi") {
+        Some(Abi::Macabi)
+    } else if cfg!(target_env = "sim") {
+        Some(Abi::Sim)
+    } else {
+        None
+    };
+
+    Target::iter()
+        .filter(|t| t.arch() == arch && t.os() == os && t.abi() == abi)
+        .collect()
+});
+
+/// Runtime guess of the host target by probing the environment
+/// (`is_musl`, `MSYSTEM`/`uname`). Prefer [`get_local_target`] when you want
+/// the compile-time target triple of the running binary.
+pub fn guess_local_target() -> Vec<Target> {
+    let os = get_local_os();
+    let arch = get_local_arch();
     let abi = get_local_abi();
-    for i in Target::iter() {
-        let target_abi = i.abi();
-        let fit_abi = match target_abi {
-            Some(a) => abi.contains(&a),
-            None => true,
-        };
-
-        if i.os() == os && i.arch() == arch && fit_abi {
-            v.push(i);
-        }
-    }
-
-    v
+    Target::iter()
+        .filter(|i| {
+            let fit_abi = match i.abi() {
+                Some(a) => abi.contains(&a),
+                None => true,
+            };
+            i.os() == os && i.arch() == arch && fit_abi
+        })
+        .collect()
 }
 
 #[cfg(test)]

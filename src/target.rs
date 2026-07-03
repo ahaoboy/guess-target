@@ -1,4 +1,3 @@
-use crate::get_local_target;
 pub use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -65,31 +64,9 @@ impl std::fmt::Display for Os {
 impl std::str::FromStr for Os {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "darwin" => Ok(Os::Darwin),
-            "linux" => Ok(Os::Linux),
-            "windows" => Ok(Os::Windows),
-            "freebsd" => Ok(Os::Freebsd),
-            "illumos" => Ok(Os::Illumos),
-            "netbsd" => Ok(Os::Netbsd),
-            "ios" => Ok(Os::Ios),
-            "android" => Ok(Os::Android),
-            "fuchsia" => Ok(Os::Fuchsia),
-            "none" => Ok(Os::None),
-            "uefi" => Ok(Os::Uefi),
-            "androideabi" => Ok(Os::Androideabi),
-            "eabi" => Ok(Os::Eabi),
-            "eabihf" => Ok(Os::Eabihf),
-            "cuda" => Ok(Os::Cuda),
-            "solaris" => Ok(Os::Solaris),
-            "emscripten" => Ok(Os::Emscripten),
-            "unknown" => Ok(Os::Unknown),
-            "wasip1" => Ok(Os::Wasip1),
-            "threads" => Ok(Os::Threads),
-            "wasip2" => Ok(Os::Wasip2),
-            "redox" => Ok(Os::Redox),
-            _ => Err("Unknown Os"),
-        }
+        static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Os>> =
+            once_cell::sync::Lazy::new(|| Os::iter().map(|v| (v.to_str(), v)).collect());
+        MAP.get(s).copied().ok_or("Unknown Os")
     }
 }
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
@@ -179,43 +156,11 @@ impl std::fmt::Display for Arch {
 impl std::str::FromStr for Arch {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "aarch64" => Ok(Arch::Aarch64),
-            "i686" => Ok(Arch::I686),
-            "x86_64" => Ok(Arch::X86_64),
-            "arm" => Ok(Arch::Arm),
-            "armv7" => Ok(Arch::Armv7),
-            "loongarch64" => Ok(Arch::Loongarch64),
-            "powerpc" => Ok(Arch::Powerpc),
-            "powerpc64" => Ok(Arch::Powerpc64),
-            "powerpc64le" => Ok(Arch::Powerpc64le),
-            "riscv64gc" => Ok(Arch::Riscv64gc),
-            "s390x" => Ok(Arch::S390x),
-            "arm64ec" => Ok(Arch::Arm64ec),
-            "armebv7r" => Ok(Arch::Armebv7r),
-            "armv5te" => Ok(Arch::Armv5te),
-            "armv7a" => Ok(Arch::Armv7a),
-            "armv7r" => Ok(Arch::Armv7r),
-            "i586" => Ok(Arch::I586),
-            "nvptx64" => Ok(Arch::Nvptx64),
-            "riscv32i" => Ok(Arch::Riscv32i),
-            "riscv32im" => Ok(Arch::Riscv32im),
-            "riscv32imac" => Ok(Arch::Riscv32imac),
-            "riscv32imafc" => Ok(Arch::Riscv32imafc),
-            "riscv32imc" => Ok(Arch::Riscv32imc),
-            "riscv64imac" => Ok(Arch::Riscv64imac),
-            "sparc64" => Ok(Arch::Sparc64),
-            "sparcv9" => Ok(Arch::Sparcv9),
-            "thumbv6m" => Ok(Arch::Thumbv6m),
-            "thumbv7em" => Ok(Arch::Thumbv7em),
-            "thumbv7m" => Ok(Arch::Thumbv7m),
-            "thumbv7neon" => Ok(Arch::Thumbv7neon),
-            "thumbv8m.base" => Ok(Arch::Thumbv8mBase),
-            "thumbv8m.main" => Ok(Arch::Thumbv8mMain),
-            "wasm32" => Ok(Arch::Wasm32),
-            "wasm32v1" => Ok(Arch::Wasm32v1),
-            _ => Err("Unknown Arch"),
-        }
+        static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Arch>> =
+            once_cell::sync::Lazy::new(|| {
+                Arch::iter().map(|v| (v.to_str(), v)).collect()
+            });
+        MAP.get(s).copied().ok_or("Unknown Arch")
     }
 }
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
@@ -257,19 +202,11 @@ impl std::fmt::Display for Vendor {
 impl std::str::FromStr for Vendor {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "apple" => Ok(Vendor::Apple),
-            "unknown" => Ok(Vendor::Unknown),
-            "pc" => Ok(Vendor::Pc),
-            "linux" => Ok(Vendor::Linux),
-            "none" => Ok(Vendor::None),
-            "nvidia" => Ok(Vendor::Nvidia),
-            "sun" => Ok(Vendor::Sun),
-            "wasip1" => Ok(Vendor::Wasip1),
-            "wasip2" => Ok(Vendor::Wasip2),
-            "fortanix" => Ok(Vendor::Fortanix),
-            _ => Err("Unknown Vendor"),
-        }
+        static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vendor>> =
+            once_cell::sync::Lazy::new(|| {
+                Vendor::iter().map(|v| (v.to_str(), v)).collect()
+            });
+        MAP.get(s).copied().ok_or("Unknown Vendor")
     }
 }
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
@@ -321,24 +258,9 @@ impl std::fmt::Display for Abi {
 impl std::str::FromStr for Abi {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "gnu" => Ok(Abi::Gnu),
-            "msvc" => Ok(Abi::Msvc),
-            "musl" => Ok(Abi::Musl),
-            "gnueabi" => Ok(Abi::Gnueabi),
-            "gnueabihf" => Ok(Abi::Gnueabihf),
-            "macabi" => Ok(Abi::Macabi),
-            "sim" => Ok(Abi::Sim),
-            "gnullvm" => Ok(Abi::Gnullvm),
-            "ohos" => Ok(Abi::Ohos),
-            "softfloat" => Ok(Abi::Softfloat),
-            "musleabi" => Ok(Abi::Musleabi),
-            "musleabihf" => Ok(Abi::Musleabihf),
-            "elf" => Ok(Abi::Elf),
-            "sgx" => Ok(Abi::Sgx),
-            "gnux32" => Ok(Abi::Gnux32),
-            _ => Err("Unknown Abi"),
-        }
+        static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Abi>> =
+            once_cell::sync::Lazy::new(|| Abi::iter().map(|v| (v.to_str(), v)).collect());
+        MAP.get(s).copied().ok_or("Unknown Abi")
     }
 }
 #[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
@@ -560,109 +482,11 @@ impl std::fmt::Display for Target {
 impl std::str::FromStr for Target {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "aarch64-apple-darwin" => Ok(Target::Aarch64AppleDarwin),
-            "aarch64-unknown-linux-gnu" => Ok(Target::Aarch64UnknownLinuxGnu),
-            "i686-pc-windows-gnu" => Ok(Target::I686PcWindowsGnu),
-            "i686-pc-windows-msvc" => Ok(Target::I686PcWindowsMsvc),
-            "i686-unknown-linux-gnu" => Ok(Target::I686UnknownLinuxGnu),
-            "x86_64-apple-darwin" => Ok(Target::X86_64AppleDarwin),
-            "x86_64-pc-windows-gnu" => Ok(Target::X86_64PcWindowsGnu),
-            "x86_64-pc-windows-msvc" => Ok(Target::X86_64PcWindowsMsvc),
-            "x86_64-unknown-linux-gnu" => Ok(Target::X86_64UnknownLinuxGnu),
-            "aarch64-pc-windows-msvc" => Ok(Target::Aarch64PcWindowsMsvc),
-            "aarch64-unknown-linux-musl" => Ok(Target::Aarch64UnknownLinuxMusl),
-            "arm-unknown-linux-gnueabi" => Ok(Target::ArmUnknownLinuxGnueabi),
-            "arm-unknown-linux-gnueabihf" => Ok(Target::ArmUnknownLinuxGnueabihf),
-            "armv7-unknown-linux-gnueabihf" => Ok(Target::Armv7UnknownLinuxGnueabihf),
-            "loongarch64-unknown-linux-gnu" => Ok(Target::Loongarch64UnknownLinuxGnu),
-            "loongarch64-unknown-linux-musl" => Ok(Target::Loongarch64UnknownLinuxMusl),
-            "powerpc-unknown-linux-gnu" => Ok(Target::PowerpcUnknownLinuxGnu),
-            "powerpc64-unknown-linux-gnu" => Ok(Target::Powerpc64UnknownLinuxGnu),
-            "powerpc64le-unknown-linux-gnu" => Ok(Target::Powerpc64leUnknownLinuxGnu),
-            "powerpc64le-unknown-linux-musl" => Ok(Target::Powerpc64leUnknownLinuxMusl),
-            "riscv64gc-unknown-linux-gnu" => Ok(Target::Riscv64gcUnknownLinuxGnu),
-            "riscv64gc-unknown-linux-musl" => Ok(Target::Riscv64gcUnknownLinuxMusl),
-            "s390x-unknown-linux-gnu" => Ok(Target::S390xUnknownLinuxGnu),
-            "x86_64-unknown-freebsd" => Ok(Target::X86_64UnknownFreebsd),
-            "x86_64-unknown-illumos" => Ok(Target::X86_64UnknownIllumos),
-            "x86_64-unknown-linux-musl" => Ok(Target::X86_64UnknownLinuxMusl),
-            "x86_64-unknown-netbsd" => Ok(Target::X86_64UnknownNetbsd),
-            "aarch64-apple-ios" => Ok(Target::Aarch64AppleIos),
-            "aarch64-apple-ios-macabi" => Ok(Target::Aarch64AppleIosMacabi),
-            "aarch64-apple-ios-sim" => Ok(Target::Aarch64AppleIosSim),
-            "aarch64-linux-android" => Ok(Target::Aarch64LinuxAndroid),
-            "aarch64-pc-windows-gnullvm" => Ok(Target::Aarch64PcWindowsGnullvm),
-            "aarch64-unknown-fuchsia" => Ok(Target::Aarch64UnknownFuchsia),
-            "aarch64-unknown-linux-ohos" => Ok(Target::Aarch64UnknownLinuxOhos),
-            "aarch64-unknown-none" => Ok(Target::Aarch64UnknownNone),
-            "aarch64-unknown-none-softfloat" => Ok(Target::Aarch64UnknownNoneSoftfloat),
-            "aarch64-unknown-uefi" => Ok(Target::Aarch64UnknownUefi),
-            "arm-linux-androideabi" => Ok(Target::ArmLinuxAndroideabi),
-            "arm-unknown-linux-musleabi" => Ok(Target::ArmUnknownLinuxMusleabi),
-            "arm-unknown-linux-musleabihf" => Ok(Target::ArmUnknownLinuxMusleabihf),
-            "arm64ec-pc-windows-msvc" => Ok(Target::Arm64ecPcWindowsMsvc),
-            "armebv7r-none-eabi" => Ok(Target::Armebv7rNoneEabi),
-            "armebv7r-none-eabihf" => Ok(Target::Armebv7rNoneEabihf),
-            "armv5te-unknown-linux-gnueabi" => Ok(Target::Armv5teUnknownLinuxGnueabi),
-            "armv5te-unknown-linux-musleabi" => Ok(Target::Armv5teUnknownLinuxMusleabi),
-            "armv7-linux-androideabi" => Ok(Target::Armv7LinuxAndroideabi),
-            "armv7-unknown-linux-gnueabi" => Ok(Target::Armv7UnknownLinuxGnueabi),
-            "armv7-unknown-linux-musleabi" => Ok(Target::Armv7UnknownLinuxMusleabi),
-            "armv7-unknown-linux-musleabihf" => Ok(Target::Armv7UnknownLinuxMusleabihf),
-            "armv7-unknown-linux-ohos" => Ok(Target::Armv7UnknownLinuxOhos),
-            "armv7a-none-eabi" => Ok(Target::Armv7aNoneEabi),
-            "armv7r-none-eabi" => Ok(Target::Armv7rNoneEabi),
-            "armv7r-none-eabihf" => Ok(Target::Armv7rNoneEabihf),
-            "i586-pc-windows-msvc" => Ok(Target::I586PcWindowsMsvc),
-            "i586-unknown-linux-gnu" => Ok(Target::I586UnknownLinuxGnu),
-            "i586-unknown-linux-musl" => Ok(Target::I586UnknownLinuxMusl),
-            "i686-linux-android" => Ok(Target::I686LinuxAndroid),
-            "i686-pc-windows-gnullvm" => Ok(Target::I686PcWindowsGnullvm),
-            "i686-unknown-freebsd" => Ok(Target::I686UnknownFreebsd),
-            "i686-unknown-linux-musl" => Ok(Target::I686UnknownLinuxMusl),
-            "i686-unknown-uefi" => Ok(Target::I686UnknownUefi),
-            "loongarch64-unknown-none" => Ok(Target::Loongarch64UnknownNone),
-            "loongarch64-unknown-none-softfloat" => Ok(Target::Loongarch64UnknownNoneSoftfloat),
-            "nvptx64-nvidia-cuda" => Ok(Target::Nvptx64NvidiaCuda),
-            "riscv32i-unknown-none-elf" => Ok(Target::Riscv32iUnknownNoneElf),
-            "riscv32im-unknown-none-elf" => Ok(Target::Riscv32imUnknownNoneElf),
-            "riscv32imac-unknown-none-elf" => Ok(Target::Riscv32imacUnknownNoneElf),
-            "riscv32imafc-unknown-none-elf" => Ok(Target::Riscv32imafcUnknownNoneElf),
-            "riscv32imc-unknown-none-elf" => Ok(Target::Riscv32imcUnknownNoneElf),
-            "riscv64gc-unknown-none-elf" => Ok(Target::Riscv64gcUnknownNoneElf),
-            "riscv64imac-unknown-none-elf" => Ok(Target::Riscv64imacUnknownNoneElf),
-            "sparc64-unknown-linux-gnu" => Ok(Target::Sparc64UnknownLinuxGnu),
-            "sparcv9-sun-solaris" => Ok(Target::Sparcv9SunSolaris),
-            "thumbv6m-none-eabi" => Ok(Target::Thumbv6mNoneEabi),
-            "thumbv7em-none-eabi" => Ok(Target::Thumbv7emNoneEabi),
-            "thumbv7em-none-eabihf" => Ok(Target::Thumbv7emNoneEabihf),
-            "thumbv7m-none-eabi" => Ok(Target::Thumbv7mNoneEabi),
-            "thumbv7neon-linux-androideabi" => Ok(Target::Thumbv7neonLinuxAndroideabi),
-            "thumbv7neon-unknown-linux-gnueabihf" => Ok(Target::Thumbv7neonUnknownLinuxGnueabihf),
-            "thumbv8m.base-none-eabi" => Ok(Target::Thumbv8mBaseNoneEabi),
-            "thumbv8m.main-none-eabi" => Ok(Target::Thumbv8mMainNoneEabi),
-            "thumbv8m.main-none-eabihf" => Ok(Target::Thumbv8mMainNoneEabihf),
-            "wasm32-unknown-emscripten" => Ok(Target::Wasm32UnknownEmscripten),
-            "wasm32-unknown-unknown" => Ok(Target::Wasm32UnknownUnknown),
-            "wasm32-wasip1" => Ok(Target::Wasm32Wasip1),
-            "wasm32-wasip1-threads" => Ok(Target::Wasm32Wasip1Threads),
-            "wasm32-wasip2" => Ok(Target::Wasm32Wasip2),
-            "wasm32v1-none" => Ok(Target::Wasm32v1None),
-            "x86_64-apple-ios" => Ok(Target::X86_64AppleIos),
-            "x86_64-apple-ios-macabi" => Ok(Target::X86_64AppleIosMacabi),
-            "x86_64-fortanix-unknown-sgx" => Ok(Target::X86_64FortanixUnknownSgx),
-            "x86_64-linux-android" => Ok(Target::X86_64LinuxAndroid),
-            "x86_64-pc-solaris" => Ok(Target::X86_64PcSolaris),
-            "x86_64-pc-windows-gnullvm" => Ok(Target::X86_64PcWindowsGnullvm),
-            "x86_64-unknown-fuchsia" => Ok(Target::X86_64UnknownFuchsia),
-            "x86_64-unknown-linux-gnux32" => Ok(Target::X86_64UnknownLinuxGnux32),
-            "x86_64-unknown-linux-ohos" => Ok(Target::X86_64UnknownLinuxOhos),
-            "x86_64-unknown-none" => Ok(Target::X86_64UnknownNone),
-            "x86_64-unknown-redox" => Ok(Target::X86_64UnknownRedox),
-            "x86_64-unknown-uefi" => Ok(Target::X86_64UnknownUefi),
-            _ => Err("Unknown Target"),
-        }
+        static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Target>> =
+            once_cell::sync::Lazy::new(|| {
+                Target::iter().map(|v| (v.to_str(), v)).collect()
+            });
+        MAP.get(s).copied().ok_or("Unknown Target")
     }
 }
 impl Target {
@@ -1086,8 +910,14 @@ impl Target {
 
 impl Default for Target {
     fn default() -> Self {
-        *get_local_target()
-            .first()
-            .expect("Failed to detect local target")
+        if let Some(t) = crate::get_local_target().first() {
+            *t
+        } else {
+            // Compile-time detection came up empty (e.g. a bare-metal/rare
+            // host not representable via cfg!); fall back to runtime probing.
+            *crate::guess_local_target()
+                .first()
+                .expect("Failed to detect local target")
+        }
     }
 }

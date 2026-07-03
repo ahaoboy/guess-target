@@ -4,11 +4,14 @@ import { constantCase, pascalCase } from "change-case"
 const Derive = `#[derive(EnumIter, Debug, PartialEq, Hash,Eq, Clone, Copy)]`
 const WasmDerive =
   `#[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]`
+const SerdeDerive =
+  `#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]`
 
 function toEnum(name: string, v: string[]): string {
   const enumName = pascalCase(name)
   const codes = [
     WasmDerive,
+    SerdeDerive,
     Derive,
     `pub enum ${enumName} {`,
 
@@ -29,25 +32,18 @@ function toEnum(name: string, v: string[]): string {
         f.write_str(self.to_str())
     }
 }`,
-    // FromStr
-
+    // FromStr: O(1) Lazy<HashMap> built from iter()+to_str().
+    // Reuses the to_str() &'static str literals — no extra string storage,
+    // no binary size increase vs a giant match (the decision tree is dropped).
     `impl std::str::FromStr for ${enumName} {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {`,
-
-    v.map((i) => `"${i}" => Ok(${enumName}::${pascalCase(i)})`).join(",\n"),
-
-    `             ,_ => Err("Unknown ${enumName}"),
-    }
+        static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, ${enumName}>> = once_cell::sync::Lazy::new(|| {
+            ${enumName}::iter().map(|v| (v.to_str(), v)).collect()
+        });
+        MAP.get(s).copied().ok_or("Unknown ${enumName}")
     }
 }`,
-    // `pub const ${
-    //   constantCase(enumName + "List")
-    // } : [${enumName}; ${v.length}] = [`,
-    // v.map((i) => `${enumName}::${pascalCase(i)}`).join(",\n"),
-
-    // "];",
   ]
 
   return codes.join("\n")
@@ -159,4 +155,16 @@ function getRule(targets: string[]): string {
 
 codes.push(implForTarget(target))
 // codes.push(getRule(target))
+codes.push(`
+impl Default for Target {
+    fn default() -> Self {
+        if let Some(t) = crate::get_local_target().first() {
+            *t
+        } else {
+            *crate::guess_local_target()
+                .first()
+                .expect("Failed to detect local target")
+        }
+    }
+}`)
 writeFileSync("src/target.rs", codes.join("\n"))
