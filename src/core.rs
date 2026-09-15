@@ -64,6 +64,15 @@ static GIT_REGEX: Lazy<Regex> = Lazy::new(|| build_re(r"(?P<git>git[-_ ][0-9a-fA
 
 const SUFFIXES: [&str; 4] = ["latest", "alpha", "beta", "master"];
 
+/// Extensions of Windows executables/installers. A trailing `.exe` is a
+/// Windows signal even when the rest of the name carries no os/arch hint.
+const WINDOWS_EXE_EXTS: [&str; 2] = ["exe", "msi"];
+
+/// Archive/compression extensions that may wrap a Windows executable, e.g.
+/// `lo.exe.gz`, `tool.exe.zip`. Only consulted when they follow a
+/// [`WINDOWS_EXE_EXTS`] extension, so plain `tool-linux.tar.gz` is unaffected.
+const ARCHIVE_EXTS: [&str; 8] = ["gz", "xz", "zst", "bz2", "zip", "7z", "tar", "rar"];
+
 #[inline]
 fn next_sep_len(s: &str) -> usize {
     match s.as_bytes().first() {
@@ -85,9 +94,7 @@ fn strip_token<'a>(s: &'a str, token: &str, with_suffix: bool) -> Cow<'a, str> {
     if with_suffix {
         let rest = &s[end..];
         for suffix in SUFFIXES {
-            if rest.len() >= suffix.len()
-                && rest[..suffix.len()].eq_ignore_ascii_case(suffix)
-            {
+            if rest.len() >= suffix.len() && rest[..suffix.len()].eq_ignore_ascii_case(suffix) {
                 end += suffix.len();
                 end += next_sep_len(&s[end..]);
                 break;
@@ -99,6 +106,55 @@ fn strip_token<'a>(s: &'a str, token: &str, with_suffix: bool) -> Cow<'a, str> {
     out.push_str(&s[end..]);
     Cow::Owned(out)
 }
+
+#[inline]
+fn eq_ext(a: &str, b: &str) -> bool {
+    a.len() == b.len() && a.eq_ignore_ascii_case(b)
+}
+
+/// Split the last `.`-separated extension off `s`. Returns `None` when there is
+/// no extension, or nothing before/after it, so names like `.exe` are ignored.
+fn split_ext(s: &str) -> Option<(&str, &str)> {
+    let idx = s.rfind('.')?;
+    let (head, ext) = (&s[..idx], &s[idx + 1..]);
+    if head.is_empty() || ext.is_empty() {
+        return None;
+    }
+    Some((head, ext))
+}
+
+/// Canonicalize a Windows file name by dropping a trailing executable
+/// extension and any archive extensions wrapping it:
+///
+/// ```text
+/// lo.exe.gz                        -> ("lo", true)
+/// riju-setup.exe                   -> ("riju-setup", true)
+/// deno-x86_64-pc-windows-msvc.exe  -> ("deno-x86_64-pc-windows-msvc", true)
+/// tool-linux.tar.gz                -> ("tool-linux.tar.gz", false)
+/// ```
+///
+/// The original string is returned untouched when no executable extension is
+/// present, and the bool reports whether a Windows extension was found.
+fn strip_win_exe(s: &str) -> (&str, bool) {
+    let mut cur = s;
+    // Peel off any `.gz`/`.zip`/... wrappers first.
+    while let Some((head, ext)) = split_ext(cur) {
+        if ARCHIVE_EXTS.iter().any(|e| eq_ext(e, ext)) {
+            cur = head;
+        } else {
+            break;
+        }
+    }
+    match split_ext(cur) {
+        Some((head, ext)) if WINDOWS_EXE_EXTS.iter().any(|e| eq_ext(e, ext)) => (head, true),
+        _ => (s, false),
+    }
+}
+
+/// Every target whose os is [`Os::Windows`], used as the low-confidence
+/// fallback for names that only carry a `.exe`/`.msi` extension.
+static WINDOWS_TARGETS: Lazy<Vec<Target>> =
+    Lazy::new(|| Target::iter().filter(|t| t.os() == Os::Windows).collect());
 
 pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
     let os = target.os();
@@ -298,6 +354,12 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
     let mut v = Vec::with_capacity(10);
     let mut last_rank: u32 = 0;
 
+    // A trailing `.exe`/`.msi` (optionally wrapped in `.gz`/`.zip`/...) marks a
+    // Windows binary but says nothing about the arch. Strip it up-front so the
+    // remaining name can still match the regular rules (`tool-x64.exe`), and
+    // keep the flag as a fallback for names without any other hint (`lo.exe.gz`).
+    let (s, windows_exe) = strip_win_exe(s);
+
     let (version, cleaned) = guess_version(s);
     let (git, cleaned) = guess_git(&cleaned);
 
@@ -312,7 +374,7 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
         }
 
         if last_rank > rule.rank {
-            return v;
+            break;
         }
 
         if let Some(cap) = rule.re.captures(&cleaned) {
@@ -338,6 +400,27 @@ pub fn guess_target(s: &str) -> Vec<GuessTarget> {
             last_rank = rule.rank;
         }
     }
+
+    // Nothing matched, but the name ended in a Windows executable extension:
+    // fall back to every Windows target with the lowest confidence.
+    if v.is_empty() && windows_exe {
+        let name = cleaned.trim_end_matches(['-', '_', '.', ' ']);
+        for target in WINDOWS_TARGETS.iter() {
+            v.push(GuessTarget {
+                name: name.to_string(),
+                target: *target,
+                version: version_str.clone(),
+                git: git_str.clone(),
+                rank: 1,
+            });
+        }
+    } else if windows_exe && v.iter().any(|i| i.target.os() == Os::Windows) {
+        // The name carried an arch/os hint *and* ended in `.exe`/`.msi`: the
+        // extension is authoritative, so drop targets for other platforms
+        // (e.g. `lo-x64.exe.gz` keeps only the Windows x86_64 triples).
+        v.retain(|i| i.target.os() == Os::Windows);
+    }
+
     v
 }
 
@@ -588,14 +671,67 @@ pub fn guess_local_target() -> Vec<Target> {
 
 #[cfg(test)]
 mod test {
-    use super::{build_rules, guess_version};
-    use crate::{Target, core::guess_git, guess_target};
+    use super::{build_rules, guess_version, strip_win_exe};
+    use crate::{Os, Target, core::guess_git, guess_target};
     use strum::IntoEnumIterator;
 
     #[test]
     fn test_get_rules() {
         let rules = build_rules();
         assert!(!rules.is_empty());
+    }
+
+    #[test]
+    fn test_strip_win_exe() {
+        for (input, stripped, is_exe) in [
+            ("lo.exe.gz", "lo", true),
+            ("lo.exe", "lo", true),
+            ("lo.EXE.GZ", "lo", true),
+            ("lo.exe.zip", "lo", true),
+            ("riju-setup.exe", "riju-setup", true),
+            ("wiztree_4_23_portable.exe", "wiztree_4_23_portable", true),
+            ("tool.msi", "tool", true),
+            (
+                "deno-x86_64-pc-windows-msvc.exe.gz",
+                "deno-x86_64-pc-windows-msvc",
+                true,
+            ),
+            // archives without an executable extension are left alone
+            ("tool-linux.tar.gz", "tool-linux.tar.gz", false),
+            ("alist-windows-amd64.zip", "alist-windows-amd64.zip", false),
+            ("lo", "lo", false),
+            (".exe", ".exe", false),
+            ("exe", "exe", false),
+        ] {
+            assert_eq!(strip_win_exe(input), (stripped, is_exe), "input: {input}");
+        }
+    }
+
+    #[test]
+    fn test_guess_windows_exe() {
+        // `.exe` alone carries no arch information, so every Windows target is
+        // returned; the name is the file name without the extension.
+        for input in ["lo.exe.gz", "lo.exe", "lo.exe.zip", "riju-setup.exe"] {
+            let ret = guess_target(input);
+            let name = match input {
+                "riju-setup.exe" => "riju-setup",
+                _ => "lo",
+            };
+            assert!(!ret.is_empty(), "input: {input}");
+            for i in &ret {
+                assert_eq!(i.name, name, "input: {input}");
+                assert_eq!(i.target.os(), Os::Windows, "input: {input}");
+            }
+        }
+
+        // an explicit arch hint still wins, but the `.exe` keeps it on Windows
+        let ret = guess_target("lo-x64.exe.gz");
+        assert!(!ret.is_empty());
+        for i in &ret {
+            assert_eq!(i.name, "lo");
+            assert_eq!(i.target.arch(), crate::Arch::X86_64);
+            assert_eq!(i.target.os(), Os::Windows);
+        }
     }
     #[test]
     fn test_guess_target() {

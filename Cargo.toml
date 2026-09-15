@@ -5,7 +5,6 @@ edition = "2024"
 license = "MIT"
 description = "guess-target"
 repository = "https://github.com/ahaoboy/guess-target"
-homepage = "https://github.com/ahaoboy/guess-target"
 authors = ["ahaoboy"]
 include = ["/src", "/Cargo.toml", "/README.md"]
 
