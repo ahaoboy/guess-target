@@ -50,6 +50,8 @@ static VERSION_REGEXES: Lazy<Vec<Regex>> = Lazy::new(|| {
         build_re(r"(?P<version>v?\d+\.\d+\.\d+-(alpha|beta))"),
         // 20250225
         build_re(r"(?P<version>[a-zA-Z]?\d{7,})"),
+        // graaljs-25.4.4.1.1-linux-amd64
+        build_re(r"(?P<version>[a-zA-Z]?\d{1,4}(?:[\._-]\d{1,4}){4})"),
         // 1.2.3.4
         build_re(r"(?P<version>[a-zA-Z]?\d{1,4}(?:[\._-]\d{1,4}){3})"),
         // 1.2.3
