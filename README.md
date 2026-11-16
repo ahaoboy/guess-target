@@ -15,6 +15,23 @@ name: ryujinx target: aarch64-apple-darwin version: 1.2.82
 name: ryujinx target: x86_64-apple-darwin version: 1.2.82
 ```
 
+## guessing a host you cannot run code on
+
+`guess_system_target` maps facts reported by a foreign machine (`uname -s`,
+`uname -m`, `uname -o`, libc flavour) to a Rust target triple. Installers and
+their UIs only supply the facts; the heuristics live here so every consumer
+agrees:
+
+```rust
+use guess_target::{Libc, SystemInfo, guess_system_target};
+
+let info = SystemInfo::from_uname("Linux", "aarch64", None).with_libc(Libc::Gnu);
+assert_eq!(
+    guess_system_target(&info).map(|t| t.to_str()),
+    Some("aarch64-unknown-linux-musl"), // ARM prefers musl on Linux
+);
+```
+
 ## test
 
 | filename                                 | name        | targets                                                                                                                                                                                                                                 | version   | git         |

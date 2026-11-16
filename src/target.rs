@@ -157,9 +157,7 @@ impl std::str::FromStr for Arch {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Arch>> =
-            once_cell::sync::Lazy::new(|| {
-                Arch::iter().map(|v| (v.to_str(), v)).collect()
-            });
+            once_cell::sync::Lazy::new(|| Arch::iter().map(|v| (v.to_str(), v)).collect());
         MAP.get(s).copied().ok_or("Unknown Arch")
     }
 }
@@ -203,9 +201,7 @@ impl std::str::FromStr for Vendor {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vendor>> =
-            once_cell::sync::Lazy::new(|| {
-                Vendor::iter().map(|v| (v.to_str(), v)).collect()
-            });
+            once_cell::sync::Lazy::new(|| Vendor::iter().map(|v| (v.to_str(), v)).collect());
         MAP.get(s).copied().ok_or("Unknown Vendor")
     }
 }
@@ -483,9 +479,7 @@ impl std::str::FromStr for Target {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         static MAP: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Target>> =
-            once_cell::sync::Lazy::new(|| {
-                Target::iter().map(|v| (v.to_str(), v)).collect()
-            });
+            once_cell::sync::Lazy::new(|| Target::iter().map(|v| (v.to_str(), v)).collect());
         MAP.get(s).copied().ok_or("Unknown Target")
     }
 }
