@@ -613,66 +613,20 @@ pub fn build_target() -> Option<Target> {
 
 /// The exact target triple the current binary was compiled for.
 ///
-/// [`BUILD_TARGET`] is parsed first (it is exact); the `cfg!`-derived fallback
-/// keeps working for unknown triples such as custom JSON targets.
+/// Derived from Cargo's `TARGET` (forwarded by `build.rs`), so it is exact —
+/// including the ABI (`-musl`, `-msvc`, `-android`, `-gnu`, …). `TARGET` is
+/// always set for build scripts, so this is never a guess.
 ///
-/// This is *not* a guess: it reflects the toolchain that produced this binary.
+/// The list is empty only for triples this crate does not model (e.g. a
+/// custom JSON target); callers that need a triple should then ask the user.
+///
 /// For runtime probing of the host (e.g. detecting musl/msys from a
 /// cross-compiled binary), use [`guess_local_target`].
 pub fn get_local_target() -> &'static [Target] {
     &LOCAL_TARGET
 }
 
-static LOCAL_TARGET: Lazy<Vec<Target>> = Lazy::new(|| {
-    if let Some(target) = build_target() {
-        return vec![target];
-    }
-
-    let arch = get_local_arch();
-    let os = get_local_os();
-    // The `target_env` values below cover both common (gnu/musl/msvc/...) and
-    // rare cross-compile targets (gnueabi/gnullvm/softfloat/...). The latter
-    // are only recognized when actually compiling for those targets, so we
-    // silence the `unexpected_cfgs` lint that fires on an unrelated host.
-    #[allow(unexpected_cfgs)]
-    let abi = if cfg!(target_env = "musl") {
-        Some(Abi::Musl)
-    } else if cfg!(target_env = "gnu") {
-        Some(Abi::Gnu)
-    } else if cfg!(target_env = "msvc") {
-        Some(Abi::Msvc)
-    } else if cfg!(target_env = "gnueabi") {
-        Some(Abi::Gnueabi)
-    } else if cfg!(target_env = "gnueabihf") {
-        Some(Abi::Gnueabihf)
-    } else if cfg!(target_env = "musleabi") {
-        Some(Abi::Musleabi)
-    } else if cfg!(target_env = "musleabihf") {
-        Some(Abi::Musleabihf)
-    } else if cfg!(target_env = "gnullvm") {
-        Some(Abi::Gnullvm)
-    } else if cfg!(target_env = "ohos") {
-        Some(Abi::Ohos)
-    } else if cfg!(target_env = "sgx") {
-        Some(Abi::Sgx)
-    } else if cfg!(target_env = "gnux32") {
-        Some(Abi::Gnux32)
-    } else if cfg!(target_env = "softfloat") {
-        Some(Abi::Softfloat)
-    } else if cfg!(target_env = "elf") {
-        Some(Abi::Elf)
-    } else if cfg!(target_env = "macabi") {
-        Some(Abi::Macabi)
-    } else if cfg!(target_env = "sim") {
-        Some(Abi::Sim)
-    } else {
-        None
-    };
-
-    Target::iter()
-        .filter(|t| t.arch() == arch && t.os() == os && t.abi() == abi)
-        .collect()
-});
+static LOCAL_TARGET: Lazy<Vec<Target>> = Lazy::new(|| build_target().into_iter().collect());
 
 /// Runtime guess of the host target by probing the environment
 /// (`is_musl`, `MSYSTEM`/`uname`). Prefer [`get_local_target`] when you want
