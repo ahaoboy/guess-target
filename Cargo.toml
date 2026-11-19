@@ -6,7 +6,7 @@ license = "MIT"
 description = "guess-target"
 repository = "https://github.com/ahaoboy/guess-target"
 authors = ["ahaoboy"]
-include = ["/src", "/Cargo.toml", "/README.md"]
+include = ["/src", "/Cargo.toml", "/README.md", "/build.rs"]
 
 [dependencies]
 regex = { version = "1", default-features = false, features = [

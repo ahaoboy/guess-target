@@ -595,9 +595,26 @@ pub fn get_local_abi() -> Vec<Abi> {
     vec![]
 }
 
-/// The exact target triple the current binary was compiled for, resolved at
-/// compile time from `cfg!(target_arch/target_os/target_env)` and cached in a
-/// `Lazy` slice — zero allocation after the first call.
+/// The Rust target triple this binary was compiled for.
+///
+/// Populated by `build.rs` from Cargo's `TARGET`, so it is exact — including
+/// the ABI (`-musl`, `-msvc`, `-android`, `-gnu`, …). This is the value a
+/// self-upgrading binary must use to fetch a replacement of the *same flavor*.
+///
+/// ```
+/// assert!(!guess_target::BUILD_TARGET.is_empty());
+/// ```
+pub const BUILD_TARGET: &str = env!("BUILD_TARGET");
+
+/// [`BUILD_TARGET`] parsed into a [`Target`], when this crate knows the triple.
+pub fn build_target() -> Option<Target> {
+    Target::from_str(BUILD_TARGET).ok()
+}
+
+/// The exact target triple the current binary was compiled for.
+///
+/// [`BUILD_TARGET`] is parsed first (it is exact); the `cfg!`-derived fallback
+/// keeps working for unknown triples such as custom JSON targets.
 ///
 /// This is *not* a guess: it reflects the toolchain that produced this binary.
 /// For runtime probing of the host (e.g. detecting musl/msys from a
@@ -607,6 +624,10 @@ pub fn get_local_target() -> &'static [Target] {
 }
 
 static LOCAL_TARGET: Lazy<Vec<Target>> = Lazy::new(|| {
+    if let Some(target) = build_target() {
+        return vec![target];
+    }
+
     let arch = get_local_arch();
     let os = get_local_os();
     // The `target_env` values below cover both common (gnu/musl/msvc/...) and
