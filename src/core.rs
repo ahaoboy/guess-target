@@ -177,7 +177,7 @@ pub fn get_common_targets(target: &Target) -> Vec<(String, u32)> {
     let mut arch_list = match arch {
         Arch::X86_64 => vec!["x86_64", "amd64", "x64", "x86", "i686", "legacy", "ia64"],
         Arch::I686 => vec!["386", "i686", "x86", "ia32", "i386"],
-        Arch::Aarch64 => vec!["aarch64", "arm64", "armv8", "armv7"],
+        Arch::Aarch64 => vec!["aarch64", "arm64", "armv8"],
         Arch::Arm => vec!["arm", "armv6"],
         Arch::S390x => vec!["s390x"],
         Arch::Powerpc => vec!["powerpc", "ppc"],
@@ -649,7 +649,7 @@ pub fn guess_local_target() -> Vec<Target> {
 #[cfg(test)]
 mod test {
     use super::{build_rules, guess_version, strip_win_exe};
-    use crate::{Os, Target, core::guess_git, guess_target};
+    use crate::{Arch, Os, Target, core::guess_git, guess_target};
     use strum::IntoEnumIterator;
 
     #[test]
@@ -739,6 +739,37 @@ mod test {
             for i in s {
                 assert!(targets.contains(&i));
             }
+        }
+    }
+
+    /// 32-bit `armv7` must not be treated as aarch64 (and vice versa):
+    /// `qjsc-linux-armv7` used to match an aarch64 target because `armv7` was
+    /// listed among the aarch64 aliases.
+    #[test]
+    fn test_armv7_is_not_aarch64() {
+        for name in ["qjsc-linux-armv7", "tool-linux-armv7", "tool-linux-armv7l"] {
+            let targets: Vec<Target> = guess_target(name)
+                .into_iter()
+                .map(|guess| guess.target)
+                .collect();
+            assert!(!targets.is_empty(), "{name} should match something");
+            assert!(
+                targets
+                    .iter()
+                    .all(|target| matches!(target.arch(), Arch::Armv7 | Arch::Arm)),
+                "{name} matched a non-armv7 target: {targets:?}"
+            );
+        }
+
+        for name in ["qjsc-linux-aarch64", "tool-linux-arm64"] {
+            let targets: Vec<Target> = guess_target(name)
+                .into_iter()
+                .map(|guess| guess.target)
+                .collect();
+            assert!(
+                targets.iter().all(|target| target.arch() == Arch::Aarch64),
+                "{name} matched a non-aarch64 target: {targets:?}"
+            );
         }
     }
 
